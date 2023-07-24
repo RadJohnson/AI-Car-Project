@@ -1,25 +1,22 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using Unity.Mathematics;
-using Unity.VisualScripting;
 using UnityEngine;
 
-//[RequireComponent( Rigidbody)]
+[RequireComponent(typeof(Rigidbody))]
 public class VehicleController : MonoBehaviour
 {
     [SerializeField] private Rigidbody rb;
 
     [Header("Suspension")]
     [SerializeField] private float[] suspensionLength;//NEEDS TO BE AN ARRAY SO THAT IT IS UNIQUE TO EACH WHEEL
-    [SerializeField] private float suspensionTravel = 0.2f;
+    private float[] suspensionLengthOld;//NEEDS TO BE AN ARRAY SO THAT IT IS UNIQUE TO EACH WHEEL
+    [SerializeField] private float suspensionTravel = 0.2f;// Rectify this stuff to make it easier to set susspension length
     [SerializeField] private float restLength = 0.5f;
     [SerializeField] private float stiffness = 4700f;
     [SerializeField] private float dampingStiffness = 640f;
     [SerializeField] private float suspensionMaxLength;
     [SerializeField] private float suspensionMinLength;
     private float dampingForce;
-    private float[] suspensionLengthOld;//NEEDS TO BE AN ARRAY SO THAT IT IS UNIQUE TO EACH WHEEL
+    private float suspensionForce;
 
     [Header("Wheel")]
     [SerializeField] private float wheelRadius;
@@ -29,7 +26,7 @@ public class VehicleController : MonoBehaviour
 
     //[SerializeField] private bool[] turnyWheels;
 
-    //Need wheelbase and rear track
+    //Need wheelbase(width between wheels) and rear track(length between wheels)
 
 
     [Space(10)]
@@ -38,44 +35,56 @@ public class VehicleController : MonoBehaviour
 
     //[SerializeField] private LayerMask floor;
 
-    public Vector3[] finalForce;
-
-    [SerializeField] private float frictionCoeficient;
-
+    [SerializeField] private float frictionCoefficient;
+    //[SerializeField] private float rollingCoefficeint;
 
 
-    [SerializeField] float steerAngle;
+    [SerializeField, Range(0, 60)] private float maximumSteeringAngle;
+    [SerializeField] private float steerAngle;
+    [SerializeField] private float steerForce;
+
+    [SerializeField] private Vector3 finalForceWorld;
+    private Vector3 objectOnSusspensionLastPos;
 
 
+    [SerializeField] float lateralForce;
+    [SerializeField] float driveForce;
+
+    [SerializeField] private bool spiderCar;
+
+    [SerializeField, Range(0.05f, 1)] private float vehicleDragCoeficient;
 
 
+    [SerializeField] float engineForce;
 
+    float dragConstant = 0f;
+    float rollingResistanceConstant = 0f;
+    float rho = 1.29f;
 
+    [SerializeField] AnimationCurve frictionCurve;
+    private float engineForceMultiplier;
 
     private void Awake()
     {
-        suspensionMinLength = restLength - suspensionTravel;
-        suspensionMaxLength = restLength + suspensionTravel;
 
         suspensionLength = new float[suspensionTransforms.Length];
         suspensionLengthOld = new float[suspensionTransforms.Length];
-        finalForce = new Vector3[suspensionTransforms.Length];
+
+        suspensionMinLength = restLength - suspensionTravel;// Rectify this stuff to make it easier to set susspension length
+        suspensionMaxLength = restLength + suspensionTravel;// Rectify this stuff to make it easier to set susspension length
+
+        float frontalArea = 0;
+
+        if (TryGetComponent(out Collider col))
+        {
+            Bounds bounds = col.bounds;
+            frontalArea = bounds.size.x * bounds.size.z;
+        }
+
+        dragConstant = AirResistance(vehicleDragCoeficient, frontalArea, rho);
+        rollingResistanceConstant = dragConstant * 30;
 
         UpdateWheelSize();
-
-        //for (int i = 0; i < wheels.Length; i++)
-        //{
-        //    wheels[i].localScale = new Vector3(wheelRadius * 1f, wheels[i].localScale.y, wheelRadius * 1f);
-        //}
-        //wheels = new Transform[suspensionTransforms.Length];
-
-        //for (int i = 0; i < suspensionTransforms.Length; i++)
-        //{
-        //    wheels[i] = Instantiate(wheel.transform);
-        //    //wheels[i].SetParent(gameObject.transform);
-
-        //    wheels[i].gameObject.transform.localScale = new Vector3(wheelRadius * 2, wheels[i].transform.localScale.y, wheelRadius * 2);
-        //}
     }
 
     private void UpdateWheelSize()
@@ -86,9 +95,6 @@ public class VehicleController : MonoBehaviour
         }
     }
 
-
-
-    //What if i do the suspension on the wheel and push it awway form car instead of push car from the floor
 
     /// <summary>
     /// Calcualtes Hookes Law
@@ -123,29 +129,138 @@ public class VehicleController : MonoBehaviour
     /// <returns></returns>                                                                         
     float Friction(float µ, float N)
     {
-        float F = µ * N;
+        float F = -µ * N;
         return F;
+    }
+
+    ///// <summary>
+    ///// Calcualtes Force of Friction
+    ///// </summary>
+    ///// <param name="µ">is the Friction Coefficient(ammount of interaction between surfaces)</param>
+    ///// <param name="N">is the Normal Force(applied perpendicular to the surface contact)</param>
+    ///// <returns></returns>
+    //float Friction(float µ, float N, float angle)
+    //{
+    //    N = N * MathF.Cos(angle);
+    //    float F = -µ * N;
+    //    return F;
+    //}
+
+
+    /// <summary>
+    /// Calculates RollingFriction output as F
+    /// </summary>
+    /// <param name="f">f is the coefficient of rolling friction</param>
+    /// <param name="W">W is the weight of the cylinder converted to force, or the force between the cylinder and the flat surface</param>
+    /// <param name="R">R is radius of the cylinder</param>
+    /// <returns></returns>
+    float RollingFriction(float f, float W, float R)
+    {
+        float F = f * W / R;
+        return F;
+    }
+
+    float Force(float M, float A)
+    {
+        float F = M * A;
+        return F;
+    }
+
+    float Acceleration(float F, float M)
+    {
+        float A = F / M;
+        return A;
     }
 
     /// <summary>
-    /// Calcualtes Force of Friction
+    /// Calculates force to be applied by wheels
     /// </summary>
-    /// <param name="µ">is the Friction Coefficient(ammount of interaction between surfaces)</param>
-    /// <param name="N">is the Normal Force(applied perpendicular to the surface contact)</param>
+    /// <param name="u">Unit vector for heading  could just be forward vector for vehicle?</param>
+    /// <param name="EngineForce">Power of the engine</param>
     /// <returns></returns>
-    float Friction(float µ, float N, float angle)
+    float Traction(float u, float EngineForce)
     {
-        N = N * MathF.Cos(angle);
-        float F = µ * N;
+        float F = u * EngineForce;
         return F;
     }
 
-    float Force(float mass, float acceleration)
+    //F(traction) = u* Engineforce, where u is a unit vector in the direction of the car's heading.
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="C"></param>
+    /// <param name="V"></param>
+    /// <returns></returns>
+    float Drag(float C, float V)
     {
-        float F = mass * acceleration;
+        var F = -C * V * V;
         return F;
     }
 
+    //F(drag) = - C(drag) * v * |v| where C(drag) is a constant and v is the velocity vector and the notation |v| refers to the magnitude of vector v
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="C"></param>
+    /// <param name="V"></param>
+    /// <returns></returns>
+    float RollingResistance(float C, float V)
+    {
+        float F = -C * V;
+        return F;
+    }
+
+    //F(rr) = - C(rr) * v    where C(rr) is a constant and v is the velocity vector.
+
+
+    float LongtitudinalForce(float Traction, float Drag, float RollingResistance)
+    {
+        float F = Traction + Drag + RollingResistance;
+        return F;
+    }
+    //F(long) =   F(traction) + F(drag)   + F(rr) Note that if you're driving in a straight line the drag and rolling resistance forces will be in the opposite
+    //direction from the traction force.  So in terms of  magnitude, you're subtracting the resistance force from the traction force.
+    //When the car is cruising at a constant speed the forces are in equilibrium and Flong is zero.
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="C">vehicle coefficient of drag</param>
+    /// <param name="A">frontal area of car</param>
+    /// <param name="Rho">density of air</param>
+    /// <param name="V">speed of the car</param>
+    /// <returns></returns>
+    float AirResistance(float C, float A, float Rho)
+    {
+        float F = 0.5f * C * A * Rho;
+        return F;
+    }
+
+    //Fdrag =  0.5 * Cd* A * rho* v2
+    //
+    //where Cd = coefficient of friction
+    //A is frontal area of car
+    //rho(Greek symbol)= density of air
+    //v = speed of the car
+
+
+
+    //float Engine(float Tourque,float gearRatio)
+    //{
+
+    //    return;
+    //}
+
+    //Fdrive = u* Tengine * xg* xd * n / Rw
+    //where
+    //u is a unit vector which reflects the car's orientation,
+    //Tengine is the torque of the engine at a given rpm,
+    //xg is the gear ratio,
+    //xd is the differential ratio,
+    //n is transmission efficiency and
+    //Rw is wheel radius.
 
     void FixedUpdate()
     {
@@ -153,165 +268,134 @@ public class VehicleController : MonoBehaviour
 
         for (int i = 0; i < suspensionTransforms.Length; i++)
         {
-            //need to get the relative transform of the spring i think
-
-            if (Physics.Raycast(suspensionTransforms[i].position, -transform.up, out RaycastHit intersectpoint, suspensionMaxLength + wheelRadius/*, floor*/))//This may need to change
+            if (Physics.Raycast(suspensionTransforms[i].position, -transform.up, out RaycastHit intersectPoint, suspensionMaxLength + wheelRadius/*, floor*/))//This may need to change
             {
-                // MAY WANT TO MAKE IT SO THAT WHAT THE SUSPOEEENSION IS ON HAS AN EQUAL FORCE APPLIED TO IT IN OPPOSITE DIRECTION
+                ///Suspension
+
                 suspensionLengthOld[i] = suspensionLength[i];
 
-                suspensionLength[i] = intersectpoint.distance - wheelRadius;//This may need to change
+                suspensionLength[i] = intersectPoint.distance - wheelRadius;
 
                 suspensionLength[i] = Mathf.Clamp(suspensionLength[i], suspensionMinLength, suspensionMaxLength);
 
-                suspensionLength[i] = /*float.Parse(*/suspensionLength[i]/*.ToString("0.00"))*/;
+                suspensionLength[i] = suspensionLength[i];
 
                 dampingForce = dampingStiffness * Acceleration(suspensionLengthOld[i], suspensionLength[i], Time.fixedDeltaTime);
 
-                finalForce[i] = (HookesLaw(stiffness, restLength - suspensionLength[i]) + dampingForce) * suspensionTransforms[i].up;
-                //Debug.DrawLine(suspensionTransforms[i].position, (suspensionTransforms[i].position + finalForce[i]), Color.blue);
 
-                //Debug.DrawRay(suspensionTransforms[i].position, (suspensionTransforms[i].position + finalForce[i]), Color.blue);
-                //rb.AddForce(finalForce);
+                suspensionForce = HookesLaw(stiffness, restLength - suspensionLength[i]) + dampingForce;
 
-
-                // steering force
-
-                // world-space direction of the spring force.
-                ///Vector3 steeringDir = suspensionTransforms[i].right;
-                // world-space velocity of the suspension
-                ///Vector3 tireWorldVel = rb.GetPointVelocity(suspensionTransforms[i].right);
-                // what it's the tire's velocity in the steering direction?
-                // note that steeringDir is a unit vector, so this returns the magnitude of tireworldVel // as projected onto steeringDir
-                ///float steeringVel = Vector3.Dot(steeringDir, tireWorldVel);
-                // the change in velocity that we're looking for is -steeringVel * gripFactor
-                // gripFactor is in range 0-1, 0 means no grip, 1 means full grip
-                ///float desiredVelChange = -steeringVel * frictionCoeficient;
-                // turn change in velocity into an acceleration (acceleration change in vel / time)
-                // this will produce the acceleration necessary to change the velocity by desiredVelChange in 1 physics step float desiredAccel desiredVelChange / Time.fixedDeltaTime;
-                ///float desiredAccel = desiredVelChange / Time.deltaTime;
-
-                // Force = Mass Acceleration, so multiply by the mass of the tire and apply as a force!
-                ///rb.AddForceAtPosition(steeringDir * 1 * desiredAccel, suspensionTransforms[i].position);
+                if (!spiderCar)//this amkes the car more stable when turned on (could consider making it switch on and off based off of some condition)
+                    suspensionForce = Mathf.Clamp(suspensionForce, 0, Mathf.Infinity);
+                // this line above is needed so that the car doesnt stick to cielings or walls
 
 
-                //Vector3 steeringDir = suspensionTransforms[i].right;
+                //This bit needs to hold the objects that are on the suspension points to be fully robust and handle more than one object without issue
+                GameObject objectOnSusspension = intersectPoint.collider.gameObject;
+                if (objectOnSusspension.TryGetComponent(out Rigidbody otherObjectRb))
+                {
+                    otherObjectRb.AddForceAtPosition(new Vector3(0, HookesLaw(stiffness, restLength - suspensionLength[i]) +
+                        (dampingStiffness * Acceleration(objectOnSusspensionLastPos.y, objectOnSusspension.transform.position.y, Time.fixedDeltaTime)), 0), intersectPoint.point);
+                }
+                objectOnSusspensionLastPos = intersectPoint.collider.gameObject.transform.position;
+
+
+                ///LateralForce
+
                 //
-                //Vector3 tireworldvel = rb.GetPointVelocity(suspensionTransforms[i].position);// may want to put this at the actual tire position rather than the top of the suspension
-                //
-                //float steeringVel = Vector3.Dot(steeringDir, tireworldvel);
-                //
-                ////float desiredVelChange = -steeringVel * tiregripforce;//replace with function for friction
-                //
-                ////float desiredAcel = desiredVelChange / Time.deltaTime;//replace wiht acceleration function
-                //
-                ////rb.AddForceAtPosition(steeringDir * 1 * Acceleration(steeringVel, Friction(frictionCoeficient, -1 * rb.mass), Time.deltaTime), suspensionTransforms[i].position);
-                //
-                //Vector3 force = steeringDir *  1 * Acceleration(steeringVel, Friction(frictionCoeficient, -1 * rb.mass),Time.deltaTime);
-                //
-                //
-                //finalForce[i] += force;
 
-                //Debug.Log( Friction(frictionCoeficient,rb.mass,Vector3.Angle(intersectpoint.normal,Vector3.up)) );
-
-                //Vector3 force = suspensionTransforms[i].right *  1 * Acceleration(Vector3.Dot(suspensionTransforms[i].right, rb.GetRelativePointVelocity(suspensionTransforms[i].position)), Friction(frictionCoeficient, rb.mass, Vector3.Angle(suspensionTransforms[i].position, intersectpoint.normal)),Time.deltaTime);
-                //finalForce[i] += force;
-                //Debug.Log(force);
-
-                Vector3 tireworldvel = rb.GetPointVelocity(suspensionTransforms[i].position);// may want to put this at the actual tire position rather than the top of the suspension 
-                                                                                                                                                                                       
-                var vectorsdot = Mathf.Sqrt( Vector3.Dot(suspensionTransforms[i].position, tireworldvel));                                                                             
-                                                                                                                                                                                       
-                var frictionforce = Friction(frictionCoeficient, tireworldvel.x, Vector3.Angle(intersectpoint.normal, Vector3.up));                                                    
-                     
-                Debug.Log(frictionforce);
-
-                finalForce[i].x += frictionforce;
-
-                //seems to work just want to inverse friction force in the function
+                Vector3 tireWorldVel = rb.GetPointVelocity(suspensionTransforms[i].position);
+                Vector3 tireLocalVel = suspensionTransforms[i].InverseTransformDirection(tireWorldVel);
+                lateralForce = Friction(frictionCoefficient, tireLocalVel.x);
 
 
-                    //final force needs to be changed so that it doesnt go off of world space and instead goes off of local transforms
+                ///RollingFriction
 
-                rb.AddForceAtPosition(finalForce[i], suspensionTransforms[i].position);
+                driveForce = (engineForce * engineForceMultiplier) / 4 + Friction(rollingResistanceConstant, tireLocalVel.z);
 
-                //Debug.Log($"doobeeg mosag {finalForce[i]}");
 
-                //wheels[i];
+                //float rollingFrictionForce = Friction(rollingCoefficeint, tireLocalVel.z);
 
-                //wheels[i].transform.position = suspensionTransforms[i].transform.position -= new Vector3(0, (suspensionTransforms[i].position - intersectpoint.point).magnitude,0);
+                //float rollingFriction = RollingFriction(rollingCoefficeint, rb.mass, wheelRadius);
+
+                //Debug.Log(rollingFriction);
+
+                //driveForce = (Traction(engineForceMultiplier, engineForce) + Drag(dragConstant, rb.velocity.z) + RollingResistance(rollingResistanceConstant, rb.velocity.z)) / 4;
+
+                // Convert the final force to world space
+
+                finalForceWorld = suspensionTransforms[i].TransformDirection(new Vector3(lateralForce, suspensionForce, driveForce));
+
+                // Apply the force at the suspension position
+                rb.AddForceAtPosition(finalForceWorld, suspensionTransforms[i].position);
             }
             else
             {
-                finalForce[i] = Vector3.zero;
+                suspensionForce = 0;
+                lateralForce = 0;
+                driveForce = 0;
+                finalForceWorld = Vector3.zero;
                 suspensionLength[i] = suspensionMaxLength;
             }
 
+
             if (Input.GetKey(KeyCode.W))
             {
-                rb.AddForce(transform.forward, ForceMode.Acceleration);
+                engineForceMultiplier++;
+                //rb.AddForce(transform.forward, ForceMode.Acceleration);
             }
-            if (Input.GetKey(KeyCode.S))
+            else if (Input.GetKey(KeyCode.S))
             {
-                rb.AddForce(-transform.forward, ForceMode.Acceleration);
+                engineForceMultiplier--;
+                //rb.AddForce(-transform.forward, ForceMode.Acceleration);
             }
+            else
+            {
+                RecenterThrottle();
+
+            }
+            Mathf.Clamp(engineForceMultiplier, -1.5f, 1.5f);
+
+            ///Steering
             if (Input.GetKey(KeyCode.A))
             {
-                rb.AddRelativeTorque(-Vector3.up * 4, ForceMode.Force);
-                //rb.AddForceAtPosition(transform.right,new Vector3(Mathf.Lerp(suspensionTransforms[0].position.x,suspensionTransforms[1].position.x,0.5f),suspensionTransforms[0].position.y));
+                steerAngle -= steerForce;
             }
-            if (Input.GetKey(KeyCode.D))
+            else if (Input.GetKey(KeyCode.D))
             {
-                rb.AddRelativeTorque(Vector3.up * 4, ForceMode.Force);
-                //rb.AddForceAtPosition(-transform.right, new Vector3(Mathf.Lerp(suspensionTransforms[0].position.x, suspensionTransforms[1].position.x, 0.5f), suspensionTransforms[0].position.y));
-
+                steerAngle += steerForce;
             }
+            else
+            {
+                RecenterSteering();
+            }
+
+            steerAngle = Mathf.Clamp(steerAngle, -maximumSteeringAngle, maximumSteeringAngle);
+            suspensionTransforms[0].localEulerAngles = new Vector3(suspensionTransforms[0].gameObject.transform.localEulerAngles.x, steerAngle, suspensionTransforms[0].gameObject.transform.localEulerAngles.z);
+            suspensionTransforms[1].localEulerAngles = new Vector3(suspensionTransforms[0].gameObject.transform.localEulerAngles.x, steerAngle, suspensionTransforms[0].gameObject.transform.localEulerAngles.z);
+
+
         }
     }
-    /*
-     bool rayDidHit = Physics.Raycast(suspensionTransforms[i].position, -transform.up, out RaycastHit tireRay, suspensionMaxLength + wheelRadius);
-
-        if (rayDidHit)
-        {
-            // World-space direction of the spring force
-            Vector3 springDir = suspensionTransforms[i].up;
-
-            // World-space velocity of this tire
-            Vector3 tireWorldVel = rb.GetPointVelocity(suspensionTransforms[i].position);
-
-            // Calculate offset from the raycast
-            float offset = restLength - tireRay.distance;
-
-            // Calculate velocity along the spring direction
-            float vel = Vector3.Dot(springDir, tireWorldVel);
-
-            // Calculate the magnitude of the dampened spring force
-            float dampingForce = damping * vel;
-
-            // Calculate the magnitude of the spring force
-            float springForce = stiffness * offset;
-
-            // Calculate the total force including damping and spring forces
-            float force = springForce - dampingForce;
-
-            // Apply the force at the location of this tire, in the direction of the suspension
-            rb.AddForceAtPosition(springDir * force, suspensionTransforms[i].position);
-        }
-        else
-        {
-            // No contact with the ground, set the force and suspension length to zero
-            finalForce[i] = Vector3.zero;
-            suspensionLength[i] = suspensionMaxLength;
-        }
-     */
+    void RecenterSteering()
+    {
+        if (steerAngle > 0.05f || steerAngle < -0.05f)
+            steerAngle = Mathf.Lerp(steerAngle, 0, Time.deltaTime);
+        else steerAngle = 0;
+    }
+    void RecenterThrottle()
+    {
+        if (engineForceMultiplier > 0.05f || engineForceMultiplier < -0.05f)
+            engineForceMultiplier = Mathf.Lerp(engineForceMultiplier, 0, Time.deltaTime);
+        else engineForceMultiplier = 0;
+    }
 
     private void Update()
     {
-        //will make the mesh appear in the Scene at origin position
         for (int i = 0; i < suspensionTransforms.Length; i++)
         {
             wheels[i].position = suspensionTransforms[i].position + (-transform.up * (suspensionLength[i] + wheelRadius / 2f));
-            //Graphics.DrawMesh(wheelMesh, suspensionTransforms[i].position + (-transform.up * suspensionLength[i]), Quaternion.identity, wheelMat, 0);
+            wheels[i].localRotation = suspensionTransforms[i].localRotation;
         }
 
         UpdateWheelSize();
@@ -338,29 +422,50 @@ public class VehicleController : MonoBehaviour
         {
             for (int i = 0; i < suspensionTransforms.Length; i++)
             {
-                //make it so that the red ray and green ray move based on the actuall length of the suspension
-
-                Gizmos.color = Color.red;
-
+                //Spring
+                Gizmos.color = Color.yellow;
                 Gizmos.DrawRay(suspensionTransforms[i].position, -transform.up * restLength);
 
-                Gizmos.color = Color.green;
-
+                //Wheel height
+                Gizmos.color = Color.gray;
                 Gizmos.DrawRay(suspensionTransforms[i].position - (transform.up * restLength), -transform.up * wheelRadius);
 
+                //Make a thing to seperate the forces so you can see them all individually
 
+                Gizmos.color = Color.red;
+                Gizmos.DrawRay(suspensionTransforms[i].position, lateralForce * suspensionTransforms[i].right);
 
-
-                // make a thing to seperate the forces so you can see them all individually
+                Gizmos.color = Color.green;
+                Gizmos.DrawRay(suspensionTransforms[i].position, suspensionForce * suspensionTransforms[i].up);
 
                 Gizmos.color = Color.blue;
+                Gizmos.DrawRay(suspensionTransforms[i].position, driveForce * suspensionTransforms[i].forward);
 
-                Gizmos.DrawRay(suspensionTransforms[i].position, finalForce[i] / finalForce[i].magnitude);
+                //Combined forces
+                //Gizmos.color = new Color(finalForceWorld.x, finalForceWorld.y, finalForceWorld.z);
+                //Gizmos.DrawRay(suspensionTransforms[i].position, finalForceWorld / finalForceWorld.magnitude);
             }
         }
     }
+
     void Reset()
     {
         rb = GetComponent<Rigidbody>();
+
+        suspensionTravel = 0.2f;
+        restLength = 0.5f;
+        stiffness = 2000f;
+        dampingStiffness = 250f;
+
+        wheelRadius = 0.43f;
+
+        frictionCoefficient = 1200f;
+
+        maximumSteeringAngle = 30f;
+
+        steerForce = 0.5f;
+
+        spiderCar = false;
+
     }
 }
