@@ -6,6 +6,26 @@ public class VehicleController : MonoBehaviour
 {
     [SerializeField] private Rigidbody rb;
 
+
+    [Serializable]
+    struct Suspension
+    {
+        [SerializeField] internal float suspensionLength;//NEEDS TO BE AN ARRAY SO THAT IT IS UNIQUE TO EACH WHEEL
+        internal float suspensionLengthOld;//NEEDS TO BE AN ARRAY SO THAT IT IS UNIQUE TO EACH WHEEL
+        [SerializeField] internal float suspensionTravelf;// Rectify this stuff to make it easier to set susspension length
+        [SerializeField] internal float restLength;
+        [SerializeField] internal float stiffness;
+        [SerializeField] internal float dampingStiffness;
+        internal float suspensionMaxLength;
+        internal float suspensionMinLength;
+        //private float dampingForce;
+        //private float suspensionForce;
+    }
+    [SerializeField] Suspension[] suspensions;
+
+
+
+
     [Header("Suspension")]
     [SerializeField] private float[] suspensionLength;//NEEDS TO BE AN ARRAY SO THAT IT IS UNIQUE TO EACH WHEEL
     private float[] suspensionLengthOld;//NEEDS TO BE AN ARRAY SO THAT IT IS UNIQUE TO EACH WHEEL
@@ -26,7 +46,7 @@ public class VehicleController : MonoBehaviour
 
     //[SerializeField] private bool[] turnyWheels;
 
-    //Need wheelbase(width between wheels) and rear track(length between wheels)
+    //wheelbase(width between wheels) and rear track(length between wheels) this could b usefulc
 
 
     [Space(10)]
@@ -57,8 +77,8 @@ public class VehicleController : MonoBehaviour
 
     [SerializeField] float engineForce;
 
-    float dragConstant = 0f;
-    float rollingResistanceConstant = 0f;
+    [SerializeField] float dragConstant = 0f;
+    [SerializeField] float rollingResistanceConstant = 0f;
     float rho = 1.29f;
 
     [SerializeField] AnimationCurve frictionCurve;
@@ -66,13 +86,6 @@ public class VehicleController : MonoBehaviour
 
     private void Awake()
     {
-
-        suspensionLength = new float[suspensionTransforms.Length];
-        suspensionLengthOld = new float[suspensionTransforms.Length];
-
-        suspensionMinLength = restLength - suspensionTravel;// Rectify this stuff to make it easier to set susspension length
-        suspensionMaxLength = restLength + suspensionTravel;// Rectify this stuff to make it easier to set susspension length
-
         float frontalArea = 0;
 
         if (TryGetComponent(out Collider col))
@@ -83,6 +96,12 @@ public class VehicleController : MonoBehaviour
 
         dragConstant = AirResistance(vehicleDragCoeficient, frontalArea, rho);
         rollingResistanceConstant = dragConstant * 30;
+
+        suspensionLength = new float[suspensionTransforms.Length];
+        suspensionLengthOld = new float[suspensionTransforms.Length];
+
+        suspensionMinLength = restLength - suspensionTravel;// Rectify this stuff to make it easier to set susspension length
+        suspensionMaxLength = restLength + suspensionTravel;// Rectify this stuff to make it easier to set susspension length
 
         UpdateWheelSize();
     }
@@ -214,6 +233,19 @@ public class VehicleController : MonoBehaviour
 
     //F(rr) = - C(rr) * v    where C(rr) is a constant and v is the velocity vector.
 
+    float RollingResistanceGreg(float rollingResistanceConstant, float velocityZ)
+    {
+        // Calculate the rolling resistance force
+        float rollingResistanceForce = -rollingResistanceConstant * velocityZ;
+
+        // Apply damping to slow down the car over time
+        float dampingFactor = 0.5f; // Experiment with the value to adjust the damping effect
+        rollingResistanceForce += dampingFactor * velocityZ;
+
+        return rollingResistanceForce;
+    }
+
+
 
     float LongtitudinalForce(float Traction, float Drag, float RollingResistance)
     {
@@ -309,9 +341,12 @@ public class VehicleController : MonoBehaviour
                 lateralForce = Friction(frictionCoefficient, tireLocalVel.x);
 
 
+                Debug.Log($"tireWorldVel {tireWorldVel} tireLocalVel {tireLocalVel}");
+                //lateralForce = Acceleration(lateralForce,rb.mass);
+
                 ///RollingFriction
 
-                driveForce = (engineForce * engineForceMultiplier) / 4 + Friction(rollingResistanceConstant, tireLocalVel.z);
+                //driveForce = (engineForce * engineForceMultiplier)/4 + Friction(rollingResistanceConstant, tireLocalVel.z);
 
 
                 //float rollingFrictionForce = Friction(rollingCoefficeint, tireLocalVel.z);
@@ -319,8 +354,27 @@ public class VehicleController : MonoBehaviour
                 //float rollingFriction = RollingFriction(rollingCoefficeint, rb.mass, wheelRadius);
 
                 //Debug.Log(rollingFriction);
+                //float maxDriveForce = 100.0f;
 
-                //driveForce = (Traction(engineForceMultiplier, engineForce) + Drag(dragConstant, rb.velocity.z) + RollingResistance(rollingResistanceConstant, rb.velocity.z)) / 4;
+                //Debug.Log($"EngineForceMultiplier {engineForceMultiplier}");
+
+                //Debug.Log($"EngineForce {engineForce}");
+                //float dampingFactorDrive = 0.2f; // Experiment with the value to adjust the damping effect
+
+
+                driveForce = Traction(engineForceMultiplier, engineForce);
+                //Debug.Log($"Drive force traction {driveForce}");
+
+                driveForce += Drag(dragConstant, tireLocalVel.z) + RollingResistance(rollingResistanceConstant, tireLocalVel.z);//tire local only gets half the value of in the diagonal and after looking at the world speed 
+
+                //Debug.Log($"Drive force after drag {driveForce} Drag{Drag(dragConstant, tireLocalVel.z)} roll res {RollingResistance(rollingResistanceConstant, tireLocalVel.z)}");
+
+                //driveForce = Acceleration(driveForce,rb.mass);
+
+                //driveForce = Mathf.Clamp(driveForce,-20,450);
+                //driveForce -= dampingFactorDrive * rb.velocity.z;
+
+                //driveForce = Mathf.Clamp(driveForce, -maxDriveForce, maxDriveForce);
 
                 // Convert the final force to world space
 
@@ -328,6 +382,7 @@ public class VehicleController : MonoBehaviour
 
                 // Apply the force at the suspension position
                 rb.AddForceAtPosition(finalForceWorld, suspensionTransforms[i].position);
+                //rb.AddRelativeForce(0, 0, driveForce, ForceMode.Force);
             }
             else
             {
@@ -354,7 +409,7 @@ public class VehicleController : MonoBehaviour
                 RecenterThrottle();
 
             }
-            Mathf.Clamp(engineForceMultiplier, -1.5f, 1.5f);
+            engineForceMultiplier = Mathf.Clamp(engineForceMultiplier, -1.5f, 1.5f);
 
             ///Steering
             if (Input.GetKey(KeyCode.A))
@@ -390,8 +445,20 @@ public class VehicleController : MonoBehaviour
         else engineForceMultiplier = 0;
     }
 
+
     private void Update()
     {
+        //float frontalArea = 0;
+
+        //if (TryGetComponent(out Collider col))
+        //{
+        //    Bounds bounds = col.bounds;
+        //    frontalArea = bounds.size.x * bounds.size.z;
+        //}
+
+        //dragConstant = AirResistance(vehicleDragCoeficient, frontalArea, rho);
+        //rollingResistanceConstant = dragConstant * 30;
+
         for (int i = 0; i < suspensionTransforms.Length; i++)
         {
             wheels[i].position = suspensionTransforms[i].position + (-transform.up * (suspensionLength[i] + wheelRadius / 2f));
@@ -404,15 +471,48 @@ public class VehicleController : MonoBehaviour
 
 
 
-    void CalculateSuspension()
+    private float CalculateSuspension(RaycastHit ray, ref Suspension suspension)
     {
+        ///Suspension
+        float suspensionForce, dampingForce;
+        suspension.suspensionLengthOld = suspension.suspensionLength;
 
+        suspension.suspensionLength = ray.distance - wheelRadius;
+
+        suspension.suspensionLength = Mathf.Clamp(suspension.suspensionLength, suspensionMinLength, suspensionMaxLength);
+
+        dampingForce = suspension.dampingStiffness * Acceleration(suspension.suspensionLengthOld, suspension.suspensionLength, Time.fixedDeltaTime);
+
+
+        suspensionForce = HookesLaw(suspension.stiffness, suspension.restLength - suspension.suspensionLength) + dampingForce;
+
+        if (!spiderCar)//this amkes the car more stable when turned on (could consider making it switch on and off based off of some condition)
+            suspensionForce = Mathf.Clamp(suspensionForce, 0, Mathf.Infinity);
+        // this line above is needed so that the car doesnt stick to cielings or walls
+
+
+
+
+        //This bit needs to hold the objects that are on the suspension points to be fully robust and handle more than one object without issue
+        GameObject objectOnSusspension = ray.collider.gameObject;
+        if (objectOnSusspension.TryGetComponent(out Rigidbody otherObjectRb))
+        {
+            otherObjectRb.AddForceAtPosition(new Vector3(0, HookesLaw(stiffness, restLength - suspension.suspensionLength) +
+                (suspension.dampingStiffness * Acceleration(objectOnSusspensionLastPos.y, objectOnSusspension.transform.position.y, Time.fixedDeltaTime)), 0), ray.point);
+        }
+        objectOnSusspensionLastPos = ray.collider.gameObject.transform.position;
+
+
+
+        return suspensionForce;
     }
 
 
-    void LateralFriction()
+    float LateralFriction(Transform _suspensionTransform, float _frictionCoeficient)
     {
-
+        Vector3 tireWorldVel = rb.GetPointVelocity(_suspensionTransform.position);
+        Vector3 tireLocalVel = _suspensionTransform.InverseTransformDirection(tireWorldVel);
+        return Friction(_frictionCoeficient, tireLocalVel.x);
     }
 
 
@@ -424,11 +524,11 @@ public class VehicleController : MonoBehaviour
             {
                 //Spring
                 Gizmos.color = Color.yellow;
-                Gizmos.DrawRay(suspensionTransforms[i].position, -transform.up * restLength);
+                Gizmos.DrawRay(suspensionTransforms[i].position, -transform.up * suspensionLength[i]);
 
                 //Wheel height
                 Gizmos.color = Color.gray;
-                Gizmos.DrawRay(suspensionTransforms[i].position - (transform.up * restLength), -transform.up * wheelRadius);
+                Gizmos.DrawRay(suspensionTransforms[i].position - (transform.up * suspensionLength[i]), -transform.up * wheelRadius);
 
                 //Make a thing to seperate the forces so you can see them all individually
 
