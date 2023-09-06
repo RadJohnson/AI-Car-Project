@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
@@ -10,7 +10,9 @@ public class VehicleController : MonoBehaviour
     [Serializable]
     struct Suspension
     {
-        [SerializeField] internal float suspensionLength;//NEEDS TO BE AN ARRAY SO THAT IT IS UNIQUE TO EACH WHEEL
+        [Header("Suspension")]
+        [SerializeField] internal Transform suspensionTransforms;
+        internal float suspensionLength;//NEEDS TO BE AN ARRAY SO THAT IT IS UNIQUE TO EACH WHEEL
         internal float suspensionLengthOld;//NEEDS TO BE AN ARRAY SO THAT IT IS UNIQUE TO EACH WHEEL
         [SerializeField] internal float suspensionTravelf;// Rectify this stuff to make it easier to set susspension length
         [SerializeField] internal float restLength;
@@ -18,8 +20,15 @@ public class VehicleController : MonoBehaviour
         [SerializeField] internal float dampingStiffness;
         internal float suspensionMaxLength;
         internal float suspensionMinLength;
+        [SerializeField] bool Steering;
+        [SerializeField] bool drive;
+
         //private float dampingForce;
         //private float suspensionForce;
+        [Header("Wheel")]
+        [SerializeField] private float wheelRadius;
+        [SerializeField] private GameObject wheel;
+        [SerializeField] private float frictionCoefficient;
     }
     [SerializeField] Suspension[] suspensions;
 
@@ -51,7 +60,6 @@ public class VehicleController : MonoBehaviour
 
     [Space(10)]
 
-    [SerializeField] private float speed;
 
     //[SerializeField] private LayerMask floor;
 
@@ -60,7 +68,7 @@ public class VehicleController : MonoBehaviour
 
 
     [SerializeField, Range(0, 60)] private float maximumSteeringAngle;
-    [SerializeField] private float steerAngle;
+    private float steerAngle;
     [SerializeField] private float steerForce;
 
     [SerializeField] private Vector3 finalForceWorld;
@@ -79,6 +87,7 @@ public class VehicleController : MonoBehaviour
 
     [SerializeField] float dragConstant = 0f;
     [SerializeField] float rollingResistanceConstant = 0f;
+    [SerializeField] float sDragConstant = 0f;
     float rho = 1.29f;
 
     [SerializeField] AnimationCurve frictionCurve;
@@ -87,15 +96,19 @@ public class VehicleController : MonoBehaviour
     private void Awake()
     {
         float frontalArea = 0;
+        float sideArea = 0;
 
         if (TryGetComponent(out Collider col))
         {
-            Bounds bounds = col.bounds;
-            frontalArea = bounds.size.x * bounds.size.z;
+            Vector3 localExtents = col.bounds.extents;
+
+            frontalArea = Mathf.Abs(localExtents.x) * Mathf.Abs(localExtents.z) * 4f;
+            sideArea = Mathf.Abs(localExtents.y) * Mathf.Abs(localExtents.z) * 4f;
         }
 
         dragConstant = AirResistance(vehicleDragCoeficient, frontalArea, rho);
         rollingResistanceConstant = dragConstant * 30;
+        sDragConstant = AirResistance(vehicleDragCoeficient, sideArea, rho);
 
         suspensionLength = new float[suspensionTransforms.Length];
         suspensionLengthOld = new float[suspensionTransforms.Length];
@@ -143,25 +156,25 @@ public class VehicleController : MonoBehaviour
     /// <summary>                                                                                   
     /// Calcualtes Force of Friction                                                                
     /// </summary>                                                                                  
-    /// <param name="µ">is the Friction Coefficient(ammount of interaction between surfaces)</param>
+    /// <param name="Âµ">is the Friction Coefficient(ammount of interaction between surfaces)</param>
     /// <param name="N">is the Normal Force(applied perpendicular to the surface contact)</param>   
     /// <returns></returns>                                                                         
-    float Friction(float µ, float N)
+    float Friction(float Âµ, float N)
     {
-        float F = -µ * N;
+        float F = Âµ * N;
         return F;
     }
 
     ///// <summary>
     ///// Calcualtes Force of Friction
     ///// </summary>
-    ///// <param name="µ">is the Friction Coefficient(ammount of interaction between surfaces)</param>
+    ///// <param name="Âµ">is the Friction Coefficient(ammount of interaction between surfaces)</param>
     ///// <param name="N">is the Normal Force(applied perpendicular to the surface contact)</param>
     ///// <returns></returns>
-    //float Friction(float µ, float N, float angle)
+    //float Friction(float Âµ, float N, float angle)
     //{
     //    N = N * MathF.Cos(angle);
-    //    float F = -µ * N;
+    //    float F = -Âµ * N;
     //    return F;
     //}
 
@@ -231,7 +244,7 @@ public class VehicleController : MonoBehaviour
         return F;
     }
 
-    //F(rr) = - C(rr) * v    where C(rr) is a constant and v is the velocity vector.
+    //F(rr) = - C(rr) * v  where C(rr) is a constant and v is the velocity vector.
 
     float RollingResistanceGreg(float rollingResistanceConstant, float velocityZ)
     {
@@ -245,14 +258,26 @@ public class VehicleController : MonoBehaviour
         return rollingResistanceForce;
     }
 
+    float RollingResistanceConstantResistance(float N, float Î¼)
+    {
+        float F = N * Î¼;
+        return F;
+    }
 
+    //F = NÎ¼, where:
+
+    //F is the rolling resistance force.
+
+    //N is the normal force.
+
+    //Î¼ is the rolling resistance coefficient.
 
     float LongtitudinalForce(float Traction, float Drag, float RollingResistance)
     {
         float F = Traction + Drag + RollingResistance;
         return F;
     }
-    //F(long) =   F(traction) + F(drag)   + F(rr) Note that if you're driving in a straight line the drag and rolling resistance forces will be in the opposite
+    //F(long) = F(traction) + F(drag) + F(rr) Note that if you're driving in a straight line the drag and rolling resistance forces will be in the opposite
     //direction from the traction force.  So in terms of  magnitude, you're subtracting the resistance force from the traction force.
     //When the car is cruising at a constant speed the forces are in equilibrium and Flong is zero.
 
@@ -294,6 +319,29 @@ public class VehicleController : MonoBehaviour
     //n is transmission efficiency and
     //Rw is wheel radius.
 
+
+    /*
+    How do you calculate normal force?
+    Normal force (Fn) can be calculated by the application of Newton's Second Law (F=m*a). 
+    On a flat surface, for example, Fn can be calculate by Fn=m*g. 
+    On a surface inclined with an angle X, Fn can be calculated by Fn=m*g*cosX.
+    */
+
+    float idleRPM, maxRPM, RPM;
+
+
+
+    float NormalForce(float M, float g)
+    {
+        float F = M * g;
+        return F;
+    }
+    float NormalForce(float M, float g, float X)
+    {
+        float F = M * g * Mathf.Cos(X);
+        return F;
+    }
+
     void FixedUpdate()
     {
         //maybe need to make it so that the suspension that is calculated is random so that it updates smoother with more wheels
@@ -314,13 +362,11 @@ public class VehicleController : MonoBehaviour
 
                 dampingForce = dampingStiffness * Acceleration(suspensionLengthOld[i], suspensionLength[i], Time.fixedDeltaTime);
 
-
                 suspensionForce = HookesLaw(stiffness, restLength - suspensionLength[i]) + dampingForce;
 
                 if (!spiderCar)//this amkes the car more stable when turned on (could consider making it switch on and off based off of some condition)
                     suspensionForce = Mathf.Clamp(suspensionForce, 0, Mathf.Infinity);
                 // this line above is needed so that the car doesnt stick to cielings or walls
-
 
                 //This bit needs to hold the objects that are on the suspension points to be fully robust and handle more than one object without issue
                 GameObject objectOnSusspension = intersectPoint.collider.gameObject;
@@ -334,20 +380,21 @@ public class VehicleController : MonoBehaviour
 
                 ///LateralForce
 
-                //
+                //lateralForce = LateralFriction(suspensionTransforms[i], frictionCoefficient);
 
                 Vector3 tireWorldVel = rb.GetPointVelocity(suspensionTransforms[i].position);
                 Vector3 tireLocalVel = suspensionTransforms[i].InverseTransformDirection(tireWorldVel);
-                lateralForce = Friction(frictionCoefficient, tireLocalVel.x);
+                lateralForce = -Friction(frictionCoefficient, tireLocalVel.x);
+                //lateralForce = Friction(frictionCoefficient, NormalForce(rb.mass, Physics.gravity.y, Vector3.Angle(intersectPoint.normal, Vector3.up))*tireLocalVel.x);
 
-
-                Debug.Log($"tireWorldVel {tireWorldVel} tireLocalVel {tireLocalVel}");
+                //Debug.Log(NormalForce(rb.mass, Physics.gravity.y, Vector3.Angle(intersectPoint.normal, Vector3.up)));
+                //Debug.Log(Vector3.Angle(intersectPoint.normal, Vector3.up));
+                //Debug.Log($"tireWorldVel {tireWorldVel} tireLocalVel {tireLocalVel}");
                 //lateralForce = Acceleration(lateralForce,rb.mass);
 
                 ///RollingFriction
 
                 //driveForce = (engineForce * engineForceMultiplier)/4 + Friction(rollingResistanceConstant, tireLocalVel.z);
-
 
                 //float rollingFrictionForce = Friction(rollingCoefficeint, tireLocalVel.z);
 
@@ -362,10 +409,12 @@ public class VehicleController : MonoBehaviour
                 //float dampingFactorDrive = 0.2f; // Experiment with the value to adjust the damping effect
 
 
-                driveForce = Traction(engineForceMultiplier, engineForce);
+
+
+                driveForce = /*Friction(frictionCoefficient, tireLocalVel.z) */+Traction(engineForceMultiplier, engineForce);
                 //Debug.Log($"Drive force traction {driveForce}");
 
-                driveForce += Drag(dragConstant, tireLocalVel.z) + RollingResistance(rollingResistanceConstant, tireLocalVel.z);//tire local only gets half the value of in the diagonal and after looking at the world speed 
+                //driveForce += Drag(dragConstant, tireLocalVel.z) + RollingResistance(rollingResistanceConstant, tireLocalVel.z); //make drag apply on rigidbody rahter than the wheels
 
                 //Debug.Log($"Drive force after drag {driveForce} Drag{Drag(dragConstant, tireLocalVel.z)} roll res {RollingResistance(rollingResistanceConstant, tireLocalVel.z)}");
 
@@ -380,8 +429,16 @@ public class VehicleController : MonoBehaviour
 
                 finalForceWorld = suspensionTransforms[i].TransformDirection(new Vector3(lateralForce, suspensionForce, driveForce));
 
+                //Debug.Log(Drag(dragConstant, tireLocalVel.z) + RollingResistance(rollingResistanceConstant, tireLocalVel.z));
+
+                var s = transform.TransformDirection(new Vector3(Drag(sDragConstant, rb.velocity.x), 0, Drag(dragConstant, rb.velocity.z) + RollingResistance(rollingResistanceConstant, tireLocalVel.z)));
+                //var s = transform.TransformDirection(new Vector3(Drag(sDragConstant, rb.velocity.x), 0, Drag(dragConstant, transform.InverseTransformDirection(rb.velocity).z) + RollingResistance(rollingResistanceConstant, transform.InverseTransformDirection(rb.velocity).z)));
+
+                //rb.AddForceAtPosition(s, transform.position);//drag forces
+
+
                 // Apply the force at the suspension position
-                rb.AddForceAtPosition(finalForceWorld, suspensionTransforms[i].position);
+                rb.AddForceAtPosition(finalForceWorld + s, suspensionTransforms[i].position /*+ (-transform.up * (suspensionLength[i] + wheelRadius / 2f))*/);
                 //rb.AddRelativeForce(0, 0, driveForce, ForceMode.Force);
             }
             else
@@ -407,7 +464,6 @@ public class VehicleController : MonoBehaviour
             else
             {
                 RecenterThrottle();
-
             }
             engineForceMultiplier = Mathf.Clamp(engineForceMultiplier, -1.5f, 1.5f);
 
@@ -428,8 +484,6 @@ public class VehicleController : MonoBehaviour
             steerAngle = Mathf.Clamp(steerAngle, -maximumSteeringAngle, maximumSteeringAngle);
             suspensionTransforms[0].localEulerAngles = new Vector3(suspensionTransforms[0].gameObject.transform.localEulerAngles.x, steerAngle, suspensionTransforms[0].gameObject.transform.localEulerAngles.z);
             suspensionTransforms[1].localEulerAngles = new Vector3(suspensionTransforms[0].gameObject.transform.localEulerAngles.x, steerAngle, suspensionTransforms[0].gameObject.transform.localEulerAngles.z);
-
-
         }
     }
     void RecenterSteering()
@@ -544,6 +598,9 @@ public class VehicleController : MonoBehaviour
                 //Combined forces
                 //Gizmos.color = new Color(finalForceWorld.x, finalForceWorld.y, finalForceWorld.z);
                 //Gizmos.DrawRay(suspensionTransforms[i].position, finalForceWorld / finalForceWorld.magnitude);
+
+                Gizmos.color = Color.magenta;
+                Gizmos.DrawSphere(suspensionTransforms[i].position + (-transform.up * (suspensionLength[i] + wheelRadius)), 0.1f);
             }
         }
     }
@@ -554,16 +611,23 @@ public class VehicleController : MonoBehaviour
 
         suspensionTravel = 0.2f;
         restLength = 0.5f;
-        stiffness = 2000f;
-        dampingStiffness = 250f;
+        //stiffness = 2000f;
+        //dampingStiffness = 250f;
+
+        stiffness = 1700f;
+        dampingStiffness = 900f;
 
         wheelRadius = 0.43f;
 
-        frictionCoefficient = 1200f;
+        frictionCoefficient = 200f;
 
         maximumSteeringAngle = 30f;
 
         steerForce = 0.5f;
+
+
+        vehicleDragCoeficient = 0.534f;
+        engineForce = 100;
 
         spiderCar = false;
 
