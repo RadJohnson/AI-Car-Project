@@ -95,6 +95,8 @@ public class VehicleController : MonoBehaviour
 
     private void Awake()
     {
+        Application.targetFrameRate = -1;
+
         float frontalArea = 0;
         float sideArea = 0;
 
@@ -369,13 +371,13 @@ public class VehicleController : MonoBehaviour
                 // this line above is needed so that the car doesnt stick to cielings or walls
 
                 //This bit needs to hold the objects that are on the suspension points to be fully robust and handle more than one object without issue
-                GameObject objectOnSusspension = intersectPoint.collider.gameObject;
-                if (objectOnSusspension.TryGetComponent(out Rigidbody otherObjectRb))
-                {
-                    otherObjectRb.AddForceAtPosition(new Vector3(0, HookesLaw(stiffness, restLength - suspensionLength[i]) +
-                        (dampingStiffness * Acceleration(objectOnSusspensionLastPos.y, objectOnSusspension.transform.position.y, Time.fixedDeltaTime)), 0), intersectPoint.point);
-                }
-                objectOnSusspensionLastPos = intersectPoint.collider.gameObject.transform.position;
+                //GameObject objectOnSusspension = intersectPoint.collider.gameObject;
+                //if (objectOnSusspension.TryGetComponent(out Rigidbody otherObjectRb))
+                //{
+                //    otherObjectRb.AddForceAtPosition(new Vector3(0, HookesLaw(stiffness, restLength - suspensionLength[i]) +
+                //        (dampingStiffness * Acceleration(objectOnSusspensionLastPos.y, objectOnSusspension.transform.position.y, Time.fixedDeltaTime)), 0), intersectPoint.point);
+                //}
+                //objectOnSusspensionLastPos = intersectPoint.collider.gameObject.transform.position;
 
 
                 ///LateralForce
