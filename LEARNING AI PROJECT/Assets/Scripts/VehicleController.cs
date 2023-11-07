@@ -367,7 +367,7 @@ public class VehicleController : MonoBehaviour
                 suspensionForce = HookesLaw(stiffness, restLength - suspensionLength[i]) + dampingForce;
 
                 if (!spiderCar)//this amkes the car more stable when turned on (could consider making it switch on and off based off of some condition)
-                    suspensionForce = Mathf.Clamp(suspensionForce, 0, Mathf.Infinity);
+                    suspensionForce = Mathf.Max(0.0f, suspensionForce);//Mathf.Clamp(suspensionForce, 0, Mathf.Infinity);
                 // this line above is needed so that the car doesnt stick to cielings or walls
 
                 //This bit needs to hold the objects that are on the suspension points to be fully robust and handle more than one object without issue

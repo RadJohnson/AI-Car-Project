@@ -14,9 +14,14 @@ public class AIAgent : MonoBehaviour
         brain = _brain;
     }
 
-    private void Update()
+    private void FixedUpdate()//this would need t5op be fixed update if i wanted to do teh time speedyupy thing
     {
-
+        if (hascrashed)
+        {
+            //brain.AddFitness(-50);//bad dont crash into walls
+            //^^^^^^^ THIS ISNT HELPING ME YOU PILOCK
+            return;
+        }
         var leftRay = Physics.Raycast(transform.position, -transform.right, out var hitLeft, Mathf.Infinity, layersToCrashInto);
         var rightRay = Physics.Raycast(transform.position, transform.right, out var hitRight, Mathf.Infinity, layersToCrashInto);
         var forwardRay = Physics.Raycast(transform.position, transform.forward, out var hitForward, Mathf.Infinity, layersToCrashInto);
@@ -24,11 +29,20 @@ public class AIAgent : MonoBehaviour
         var input = new float[] { hitLeft.distance, hitRight.distance, hitForward.distance };
         //Debug.Log(brain.Process(input));
         var aiOutput = brain.Process(input);
-        gameObject.GetComponent<AICar>().AICarInput(aiOutput[0], aiOutput[1]);
 
+        var forwardBackwards = aiOutput[0];
+        var leftRight = aiOutput[1];
+
+        gameObject.GetComponent<AICar>().AICarInput(leftRight, forwardBackwards);
     }
 
 
-
+    private void OnCollisionEnter(Collision collision)
+    {
+        if ((layersToCrashInto & (1 << collision.collider.gameObject.layer)) != 0)
+        {
+            hascrashed = true;
+        }
+    }
 
 }
