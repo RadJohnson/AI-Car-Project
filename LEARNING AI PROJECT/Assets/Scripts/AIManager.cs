@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 public class AIManager : MonoBehaviour
@@ -53,7 +54,16 @@ public class AIManager : MonoBehaviour
 
                 nets.Sort();
                 //nets.Reverse();
-                
+
+                //for (int i = 0; i < populationSize; i++)
+                //{
+                //    var contentToSave = JsonUtility.ToJson(nets[i], true);// issue with this line here
+                //    string filePath = Path.Combine(Application.persistentDataPath,$"Generation_{generationNumber} NeuralNetwork_{i}.json");//change application.persistant datapath to a coppied file path
+                //
+                //    // Write the content to the file
+                //    File.WriteAllText(filePath, contentToSave);
+                //}
+
                 for (int i = 0; i < populationSize / 2; i++)// this could be an issue
                 {
                     nets[i] = new AIBrain(nets[i + (populationSize / 2)]);
