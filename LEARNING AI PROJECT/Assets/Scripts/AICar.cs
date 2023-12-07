@@ -1,9 +1,13 @@
 ﻿using System;
+using System.Threading;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
 public class AICar : MonoBehaviour
 {
+    [SerializeField] private bool showDebug = false;
+
+
     [SerializeField] private Rigidbody rb;
 
 
@@ -69,7 +73,6 @@ public class AICar : MonoBehaviour
 
     [SerializeField, Range(0, 60)] private float maximumSteeringAngle;
     private float steerAngle;
-    [SerializeField] private float steerForce;
 
     [SerializeField] private Vector3 finalForceWorld;
     private Vector3 objectOnSusspensionLastPos;
@@ -329,8 +332,6 @@ public class AICar : MonoBehaviour
 
     float idleRPM, maxRPM, RPM;
 
-
-
     float NormalForce(float M, float g)
     {
         float F = M * g;
@@ -571,35 +572,38 @@ public class AICar : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        if (suspensionTransforms.Length > 0)
+        if (showDebug)
         {
-            for (int i = 0; i < suspensionTransforms.Length; i++)
+            if (suspensionTransforms.Length > 0)
             {
-                //Spring
-                Gizmos.color = Color.yellow;
-                Gizmos.DrawRay(suspensionTransforms[i].position, -transform.up * suspensionLength[i]);
+                for (int i = 0; i < suspensionTransforms.Length; i++)
+                {
+                    //Spring
+                    Gizmos.color = Color.yellow;
+                    Gizmos.DrawRay(suspensionTransforms[i].position, -transform.up * suspensionLength[i]);
 
-                //Wheel height
-                Gizmos.color = Color.gray;
-                Gizmos.DrawRay(suspensionTransforms[i].position - (transform.up * suspensionLength[i]), -transform.up * wheelRadius);
+                    //Wheel height
+                    Gizmos.color = Color.gray;
+                    Gizmos.DrawRay(suspensionTransforms[i].position - (transform.up * suspensionLength[i]), -transform.up * wheelRadius);
 
-                //Make a thing to seperate the forces so you can see them all individually
+                    //Make a thing to seperate the forces so you can see them all individually
 
-                Gizmos.color = Color.red;
-                Gizmos.DrawRay(suspensionTransforms[i].position, lateralForce * suspensionTransforms[i].right);
+                    Gizmos.color = Color.red;
+                    Gizmos.DrawRay(suspensionTransforms[i].position, lateralForce * suspensionTransforms[i].right);
 
-                Gizmos.color = Color.green;
-                Gizmos.DrawRay(suspensionTransforms[i].position, suspensionForce * suspensionTransforms[i].up);
+                    Gizmos.color = Color.green;
+                    Gizmos.DrawRay(suspensionTransforms[i].position, suspensionForce * suspensionTransforms[i].up);
 
-                Gizmos.color = Color.blue;
-                Gizmos.DrawRay(suspensionTransforms[i].position, driveForce * suspensionTransforms[i].forward);
+                    Gizmos.color = Color.blue;
+                    Gizmos.DrawRay(suspensionTransforms[i].position, driveForce * suspensionTransforms[i].forward);
 
-                //Combined forces
-                //Gizmos.color = new Color(finalForceWorld.x, finalForceWorld.y, finalForceWorld.z);
-                //Gizmos.DrawRay(suspensionTransforms[i].position, finalForceWorld / finalForceWorld.magnitude);
+                    //Combined forces
+                    //Gizmos.color = new Color(finalForceWorld.x, finalForceWorld.y, finalForceWorld.z);
+                    //Gizmos.DrawRay(suspensionTransforms[i].position, finalForceWorld / finalForceWorld.magnitude);
 
-                Gizmos.color = Color.magenta;
-                Gizmos.DrawSphere(suspensionTransforms[i].position + (-transform.up * (suspensionLength[i] + wheelRadius)), 0.1f);
+                    Gizmos.color = Color.magenta;
+                    Gizmos.DrawSphere(suspensionTransforms[i].position + (-transform.up * (suspensionLength[i] + wheelRadius)), 0.1f);
+                }
             }
         }
     }
@@ -621,8 +625,6 @@ public class AICar : MonoBehaviour
         frictionCoefficient = 200f;
 
         maximumSteeringAngle = 30f;
-
-        steerForce = 0.5f;
 
 
         vehicleDragCoeficient = 0.534f;

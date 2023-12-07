@@ -1,20 +1,20 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Windows;
-
 public class AIAgent : MonoBehaviour
 {
     internal AIBrain brain;
-    [SerializeField]private LayerMask layersToCrashInto;
+    [SerializeField] private LayerMask layersToCrashInto;
     private bool hascrashed;
 
+    [SerializeField] internal List<GameObject> checkpoints;
+
+    [SerializeField] internal int checkpointsPassedThrough;
     public void Initialize(AIBrain _brain)
     {
         brain = _brain;
     }
 
-    private void FixedUpdate()//this would need t5op be fixed update if i wanted to do teh time speedyupy thing
+    private void FixedUpdate()//this would need to be fixed update if i wanted to do the time speedy upy thing which i am not sure is possible to be honest
     {
         if (hascrashed)
         {
@@ -26,7 +26,8 @@ public class AIAgent : MonoBehaviour
         var rightRay = Physics.Raycast(transform.position, transform.right, out var hitRight, Mathf.Infinity, layersToCrashInto);
         var forwardRay = Physics.Raycast(transform.position, transform.forward, out var hitForward, Mathf.Infinity, layersToCrashInto);
 
-        var input = new float[] { hitLeft.distance, hitRight.distance, hitForward.distance };
+        var input = new float[] 
+        { hitLeft.distance, hitRight.distance, hitForward.distance, (transform.position - checkpoints[checkpointsPassedThrough + 1].transform.position).magnitude };
         //Debug.Log(brain.Process(input));
         var aiOutput = brain.Process(input);
 
@@ -35,7 +36,19 @@ public class AIAgent : MonoBehaviour
 
         gameObject.GetComponent<AICar>().AICarInput(leftRight, forwardBackwards);
     }
-
+    internal void CheckpointChecker(GameObject checkpoint)
+    {
+        for (int i = 0; i < checkpoints.Count; i++)
+        {
+            if (checkpoint == checkpoints[i])
+            {
+                if (i == checkpointsPassedThrough)
+                {
+                    checkpointsPassedThrough++;
+                }
+            }
+        }
+    }
 
     private void OnCollisionEnter(Collision collision)
     {
@@ -44,5 +57,4 @@ public class AIAgent : MonoBehaviour
             hascrashed = true;
         }
     }
-
 }

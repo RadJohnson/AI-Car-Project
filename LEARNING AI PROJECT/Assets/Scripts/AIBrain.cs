@@ -1,16 +1,11 @@
 using System;
-using System.Diagnostics;
-using Unity.VisualScripting;
 using UnityEngine;
-
 using Random = UnityEngine.Random;
 
 // to use as a guide https://github.com/john-sorrentino/Neural-Network-Evolution-Sim-Tutorial/blob/main/NN.cs https://www.youtube.com/watch?v=yyS5hjyOFDo&list=PLlIPoiD-ZBaw9x3NRoquGkFBl9RpAasys&index=2&ab_channel=JohnSorrentino
-
-
-public class AIBrain : IComparable<AIBrain>
+[Serializable] public class AIBrain : IComparable<AIBrain>
 {
-    internal Layer[] network;
+    [SerializeField]internal Layer[] network;
 
     private float fitness;
 
@@ -21,30 +16,9 @@ public class AIBrain : IComparable<AIBrain>
         {
             network[i] = new Layer(networkShape[i]);
             if (i != 0)
-                //    network[i].previousLayer = new layer;
                 network[i].previousLayer = network[i - 1];
         }
-        /*
-        for (int i = 0; i < network.Length; i++)
-        {
-            for (int j = 0; j < network[i].nodes.Length; j++)
-            {
-                if (i + 1 > network.Length - 1)
-                {
-                    break;
-                }
-                network[i].nodes[j].weights = new float[network[i + 1].nodes.Length];//index was outside the bounds of the array
-
-                float variance = Mathf.Sqrt(1.0f / network[i + 1].nodes.Length);
-                for (int k = 0; k < network[i + 1].nodes.Length; k++)
-                {
-                    network[i].nodes[j].weights[k] = (Random.Range(0f, 1f) * 2 * variance - variance);
-                }
-
-            }
-        }
-        */
-
+        
         InitialiseWeights();
     }
 
@@ -91,6 +65,7 @@ public class AIBrain : IComparable<AIBrain>
         //CopyWeights(copyNetwork);
     }
 
+    //This will likely need to change for loading in saved ai
     private void CopyWeights(AIBrain BrainToCoppy)
     {
         for (int i = 0; i < network.Length; i++)
@@ -188,18 +163,12 @@ public class AIBrain : IComparable<AIBrain>
                 {
                     break;
                 }
-                network[i].nodes[j].weights = new float[network[i + 1].nodes.Length];//index was outside the bounds of the array
+                network[i].nodes[j].weights = new float[network[i + 1].nodes.Length];
 
                 for (int k = 0; k < network[i + 1].nodes.Length; k++)
                 {
                     network[i].nodes[j].weights[k] = Random.Range(-0.5f, 0.5f);
                 }
-                //float variance = Mathf.Sqrt(1.0f / network[i + 1].nodes.Length);
-                //for (int k = 0; k < network[i + 1].nodes.Length; k++)
-                //{
-                //    network[i].nodes[j].weights[k] = (Random.Range(0f, 1f) * 2 * variance - variance);
-                //}
-
             }
         }
     }
@@ -222,35 +191,11 @@ public class AIBrain : IComparable<AIBrain>
     }
 
 }
-
-class Node
+[Serializable] class Node
 {//inputs for this are prevous layers outputs
 
-    internal float[] weights;
+    [SerializeField]internal float[] weights;
     //private float bias = 0;
-
-    //internal float output;// = (input * weight) + bias
-
-
-    //public Node(Layer previousLayer)
-    //{
-    //    weights = new float[] { previousLayer.nodes.Length };
-    //}
-    
-    /*
-    internal float ForwardPass(float[] inputs, float[] _weights)
-    {
-        float output = 0f;
-
-        for (int i = 0; i < inputs.Length; i++)
-        {
-            for (int j = 0; j < _weights.Length; j++)
-                output += inputs[i] * _weights[j];
-        }
-
-        return output;
-    }
-    */
 
     // used to setup weights and bias for the node using using Xavier/Glorot
     public Node(int nextLayersNodeCount)
@@ -282,9 +227,9 @@ class Node
 }
 
 
-public class Layer
+[Serializable] public class Layer
 {
-    internal Node[] nodes;
+    [SerializeField] internal Node[] nodes;
     internal Layer previousLayer;
 
     public Layer(int _numNodes)
@@ -323,7 +268,6 @@ public class Layer
                 for (int j = 0; j < previousLayer.nodes.Length; j++)
                 {
                     layerOutputs[i] += inputs[j] * previousLayer.nodes[j].weights[i];
-                    //layerOutputs[i] += nodes[i].ForwardPass(inputs, previousLayer.nodes[j].weights);
                 }
                 layerOutputs[i] = ActivationFunction.Tanh(layerOutputs[i] /*+ bias*/);
             }
@@ -332,13 +276,9 @@ public class Layer
                 var firstWeights = new float[network[1].nodes.Length];
                 for (int j = 0; j < firstWeights.Length; j++)
                 {
-                    //firstWeights[j] = 1;
-                    layerOutputs[i] = inputs[i] /** firstWeights[i]*/;
+                    layerOutputs[i] = inputs[i];
                 }
-                //for (int j = 0; j < previousLayer.nodes.Length; j++)
-                //{
-                    //layerOutputs[i] = nodes[i].ForwardPass(inputs, firstWeights);
-                //}
+
             }
 
         }
@@ -381,117 +321,3 @@ struct ActivationFunction
         return x;
     }
 }
-
-
-
-
-///// <summary>
-///// Mutate neural network weights
-///// </summary>
-//public void Mutate()
-//{
-//    for (int i = 0; i < weights.Length; i++)
-//    {
-//        for (int j = 0; j < weights[i].Length; j++)
-//        {
-//            for (int k = 0; k < weights[i][j].Length; k++)
-//            {
-//                float weight = weights[i][j][k];
-
-//                //mutate weight value 
-//                float randomNumber = UnityEngine.Random.Range(0f, 100f);
-
-//                if (randomNumber <= 2f)
-//                { //if 1
-//                  //flip sign of weight
-//                    weight *= -1f;
-//                }
-//                else if (randomNumber <= 4f)
-//                { //if 2
-//                  //pick random weight between -1 and 1
-//                    weight = UnityEngine.Random.Range(-0.5f, 0.5f);
-//                }
-//                else if (randomNumber <= 6f)
-//                { //if 3
-//                  //randomly increase by 0% to 100%
-//                    float factor = UnityEngine.Random.Range(0f, 1f) + 1f;
-//                    weight *= factor;
-//                }
-//                else if (randomNumber <= 8f)
-//                { //if 4
-//                  //randomly decrease by 0% to 100%
-//                    float factor = UnityEngine.Random.Range(0f, 1f);
-//                    weight *= factor;
-//                }
-
-//                weights[i][j][k] = weight;
-//            }
-//        }
-//    }
-//}
-
-//public void AddFitness(float fit)
-//{
-//    fitness += fit;
-//}
-
-//public void SetFitness(float fit)
-//{
-//    fitness = fit;
-//}
-
-//public float GetFitness()
-//{
-//    return fitness;
-//}
-
-///// <summary>
-///// Compare two neural networks and sort based on fitness
-///// </summary>
-///// <param name="other">Network to be compared to</param>
-///// <returns></returns>
-//public int CompareTo(NeuralNetwork other)
-//{
-//    if (other == null) return 1;
-
-//    if (fitness > other.fitness)
-//        return 1;
-//    else if (fitness < other.fitness)
-//        return -1;
-//    else
-//        return 0;
-//}
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-need to create struct of class for nodes
-
-node need to contain input values and give output bassed off of math shit
-
-do the maths on the nodes
-
-(
-def node_computation(inputs, weights, bias, activation_function):
-    weighted_sum = np.dot(inputs, weights)
-    activation_potential = weighted_sum + bias
-    output = activation_function(activation_potential)
-    return output
-)
-__________________________________________________________________________________________
-
-need to define a class or struct for a group of nodes (LAYERS)
-
-
-need to create a layer that can then be used for an array and an input and output version that inherits from the main layer class
-
-*/
