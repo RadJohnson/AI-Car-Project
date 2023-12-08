@@ -9,9 +9,10 @@ public class AIAgent : MonoBehaviour
     [SerializeField] internal List<GameObject> checkpoints;
 
     [SerializeField] internal int checkpointsPassedThrough;
-    public void Initialize(AIBrain _brain)
+    public void Initialize(AIBrain _brain,int _generation)
     {
         brain = _brain;
+        brain.generation = _generation;
     }
 
     private void FixedUpdate()//this would need to be fixed update if i wanted to do the time speedy upy thing which i am not sure is possible to be honest

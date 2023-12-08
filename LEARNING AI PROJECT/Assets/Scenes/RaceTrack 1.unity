@@ -5990,7 +5990,6 @@ MonoBehaviour:
   agentPrefab: {fileID: 6114185742770414947, guid: 0fefcbf813bb91545bf23c51c2f59a4d,
     type: 3}
   startPoint: {fileID: 1133628766}
-  endpoint: {fileID: 0}
   timeBetweenGenerations: 15
   checkpoints:
   - {fileID: 1766678645}
@@ -6024,6 +6023,7 @@ MonoBehaviour:
   - {fileID: 605934261}
   - {fileID: 1812675475}
   - {fileID: 1241783978}
+  brainFilePath: 
 --- !u!4 &1133628766
 Transform:
   m_ObjectHideFlags: 0

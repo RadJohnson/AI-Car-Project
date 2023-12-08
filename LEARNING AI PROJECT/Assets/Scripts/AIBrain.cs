@@ -9,6 +9,8 @@ using Random = UnityEngine.Random;
 
     private float fitness;
 
+    [SerializeField]internal int generation;
+
     public AIBrain(int[] networkShape)
     {
         network = new Layer[networkShape.Length];
