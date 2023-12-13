@@ -191,7 +191,6 @@ using Random = UnityEngine.Random;
         }
         return tmp;
     }
-
 }
 [Serializable] class Node
 {//inputs for this are prevous layers outputs

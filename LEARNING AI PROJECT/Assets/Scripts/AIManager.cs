@@ -43,7 +43,12 @@ public class AIManager : MonoBehaviour
                     //seems like it should now be working
 
 
-                    nets[i].AddFitness(CumulativeCheckpointDistance(agentList[i].checkpointsPassedThrough));
+                    if (!agentList[i].hascrashed)
+                        nets[i].AddFitness((float)(agentList[i].checkpointsPassedThrough + (float)CumulativeCheckpointDistance(agentList[i].checkpointsPassedThrough)));
+                    else 
+                        nets[i].AddFitness(0);
+
+                    //nets[i].AddFitness(CumulativeCheckpointDistance(agentList[i].checkpointsPassedThrough));
 
                     //nets[i].AddFitness((float)agentList[i].checkpointsPassedThrough +
                     //    -(agentList[i].gameObject.transform.position - checkpoints[agentList[i].checkpointsPassedThrough + 1].transform.position).magnitude);
@@ -52,11 +57,11 @@ public class AIManager : MonoBehaviour
                     //nets[i].AddFitness((agentList[i].transform.position - startPoint.position /*+ agentList[i].transform.position + endpoint.position*/).magnitude);
                 }
 
-                nets.Sort();
+                nets.Sort();//puts the fitest at the bottom of this which is why next 2 for loops are the way they are
                 //nets.Reverse();//not needed unless I want it to become worse overtime
 
 
-                for (int i = populationSize - 1, agentNum = 0; i > populationSize - 10; i--, agentNum++)//may want to only save the first few networks rather than all of them
+                for (int i = populationSize - 1, agentNum = 0; i > populationSize - 11; i--, agentNum++)//may want to only save the first few networks rather than all of them
                 //for (int i = 0; i < 10; i++)//may want to only save the first few networks rather than all of them
                 {
                     var contentToSave = JsonUtility.ToJson(nets[i], true);
@@ -66,7 +71,7 @@ public class AIManager : MonoBehaviour
 
                     File.WriteAllText(filePath, contentToSave);
                 }
-                
+
                 /*
                 for (int i = 0; i < populationSize; i++)//this if I have time will be chaged so that the second half of the agents get the previous version coppied onto them
                 {
@@ -138,14 +143,14 @@ public class AIManager : MonoBehaviour
             }
         }
         else
-        {
+        {// might want to save all of a generation and put them all in again on their own for learning continuation
             string brain = File.ReadAllText(brainFilePath);
 
-            generationNumber = JsonUtility.FromJson<AIBrain>(brainFilePath).generation;
+            generationNumber = JsonUtility.FromJson<AIBrain>(brain).generation;
 
             for (int i = 0; i < populationSize; i++)
             {
-                AIBrain net = new AIBrain(JsonUtility.FromJson<AIBrain>(brain));// this might not be working correctly
+                AIBrain net = new AIBrain(JsonUtility.FromJson<AIBrain>(brain));
                 nets.Add(net);
             }
         }
@@ -158,7 +163,6 @@ public class AIManager : MonoBehaviour
         {
             returnVal += (checkpoints[i - 1].transform.position - checkpoints[i].transform.position).magnitude;
         }
-
         return returnVal;
     }
 
