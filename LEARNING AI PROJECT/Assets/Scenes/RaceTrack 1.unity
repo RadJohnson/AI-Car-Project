@@ -1117,7 +1117,7 @@ MonoBehaviour:
   agentPrefab: {fileID: 6114185742770414947, guid: 0fefcbf813bb91545bf23c51c2f59a4d,
     type: 3}
   startPoint: {fileID: 1133628766}
-  timeBetweenGenerations: 60
+  timeBetweenGenerations: 15
   checkpoints:
   - {fileID: 1766678645}
   - {fileID: 1655278425}
@@ -8321,13 +8321,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2030101948}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: -10}
+  m_LocalRotation: {x: 0.045069356, y: 0.9474922, z: -0.2762979, w: 0.15455374}
+  m_LocalPosition: {x: -187.7, y: 51.1, z: 252.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 32.514, y: 161.471, z: 0}
 --- !u!1 &2056162999
 GameObject:
   m_ObjectHideFlags: 0
