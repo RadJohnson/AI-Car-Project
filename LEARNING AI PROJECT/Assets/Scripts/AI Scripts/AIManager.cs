@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -16,12 +17,14 @@ public class AIManager : MonoBehaviour
     private int[] networkShape = { 4, 10, 10, 2 };// Make sure that the first and last numbers in the shape are the same as the number of inputs that outputs you want
 
     private List<AIBrain> nets;
-    private List<AIAgent> agentList;
+    internal List<AIAgent> agentList;
 
     [SerializeField] private List<GameObject> checkpoints;
 
     [SerializeField] private string brainFilePath;
 
+
+    // clean up code in here by moving to own functions
 
     private void Update()
     {
@@ -64,7 +67,7 @@ public class AIManager : MonoBehaviour
 
                 for (int i = 0; i < populationSize / 2; i++)
                 {
-                    // here is an issue as i am coppying the worst over to the front
+                    // THERE HAS TO BE AN ISSUE WITH HOWI AM COPPYING OR EDITING AGENTS AS I AM NOT MAKING A NEW VERSION OF ONE HALF OF THE NETWORKS
                     nets[i + populationSize / 2] = new AIBrain(nets[i]);
                     nets[i] = new AIBrain(nets[i]);
                     nets[i].MutateWeights();
@@ -104,7 +107,7 @@ public class AIManager : MonoBehaviour
         }
     }
 
-    void CreateTrainingPool()
+    private void CreateTrainingPool()
     {
         //population must be even and will be set to 50 as a minimum
         if (populationSize % 2 != 0)
@@ -139,7 +142,7 @@ public class AIManager : MonoBehaviour
         }
     }
 
-    float CumulativeCheckpointDistance(int checkPointsPassedThrough)
+    private float CumulativeCheckpointDistance(int checkPointsPassedThrough)
     {
         float returnVal = 0;
         for (int i = 1; i < checkPointsPassedThrough; i++)
@@ -149,8 +152,15 @@ public class AIManager : MonoBehaviour
         return returnVal;
     }
 
-    void Timer()
+    private void Timer()
     {
         isTraining = false;
     }
+
+    // doesnt work
+    internal List<GameObject> GetCarGameObjects()
+    {
+        return agentList.Select(agent => agent.gameObject).ToList();
+    }
+
 }
