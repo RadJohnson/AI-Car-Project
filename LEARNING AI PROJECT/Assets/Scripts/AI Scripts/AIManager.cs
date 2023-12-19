@@ -10,7 +10,8 @@ public class AIManager : MonoBehaviour
 {
     [SerializeField] internal AIAgent agentPrefab;
     [SerializeField] private Transform startPoint;
-    [SerializeField] private float timeBetweenGenerations = 15f;
+    [SerializeField, Tooltip("Time in Seconds")] private float timeBetweenGenerations;
+    [SerializeField, Tooltip("Time in Seconds")] private float maxTimeBetweenGenerations;
     private bool isTraining = false;
     private int populationSize = 50;
     private int generationNumber = 0;
@@ -21,15 +22,20 @@ public class AIManager : MonoBehaviour
     internal List<AIAgent> agentList;
 
     [SerializeField] private List<GameObject> checkpoints;
-    [SerializeField] private string brainFilePath;
+    [SerializeField] private string savedGenerationFilePath;
 
     private void Update()
     {
         if (!isTraining)
         {
             Debug.Log($"Starting Generation {generationNumber}");
-            if (generationNumber % 20 == 0)
-                timeBetweenGenerations += 5f;
+            if (generationNumber % 50 == 0)
+            {
+                if (timeBetweenGenerations < maxTimeBetweenGenerations)
+                {
+                    timeBetweenGenerations = Mathf.Min(timeBetweenGenerations + 5f, maxTimeBetweenGenerations);
+                }
+            }
 
             if (generationNumber == 0)
             {
@@ -63,7 +69,7 @@ public class AIManager : MonoBehaviour
         for (int i = 0; i < populationSize; i++)
         {
             if (!agentList[i].hascrashed)
-                nets[i].AddFitness((float)(agentList[i].checkpointsPassedThrough + (float)CumulativeCheckpointDistance(agentList[i].checkpointsPassedThrough)));
+                nets[i].AddFitness((float)(agentList[i].checkpointsPassedThrough + CumulativeCheckpointDistance(agentList[i].checkpointsPassedThrough)));
             else
                 nets[i].SetFitness(nets[i].GetFitness() - 10);
         }
@@ -104,7 +110,7 @@ public class AIManager : MonoBehaviour
         AdjustPopulationSize(out populationSize);
         nets = new List<AIBrain>();
 
-        if (string.IsNullOrEmpty(brainFilePath))
+        if (string.IsNullOrEmpty(savedGenerationFilePath))
         {
             for (int i = 0; i < populationSize; i++)
             {
@@ -114,7 +120,7 @@ public class AIManager : MonoBehaviour
         }
         else
         {
-            nets = LoadNetworks(brainFilePath, populationSize, true);
+            nets = LoadNetworks(savedGenerationFilePath, populationSize, true);
             generationNumber = nets.Count > 0 ? nets[0].generation : 0;
         }
     }
@@ -140,6 +146,13 @@ public class AIManager : MonoBehaviour
         {
             distance += (checkpoints[i - 1].transform.position - checkpoints[i].transform.position).magnitude;
         }
+
+        // Add distance from the last passed checkpoint to the current position
+        if (checkPointsPassedThrough > 0 && checkPointsPassedThrough <= checkpoints.Count)
+        {
+            distance += (transform.position - checkpoints[checkPointsPassedThrough - 1].transform.position).magnitude;
+        }
+
         return distance;
     }
 

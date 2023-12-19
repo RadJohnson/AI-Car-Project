@@ -9,13 +9,15 @@ public class AIAgent : MonoBehaviour
     [SerializeField] internal List<GameObject> checkpoints;
 
     [SerializeField] internal int checkpointsPassedThrough;
+    float distanceToNextCheckpoint = 0f;
+
     public void Initialize(AIBrain _brain, int _generation)
     {
         brain = _brain;
         brain.generation = _generation;
     }
 
-    private void FixedUpdate()//this would need to be fixed update if i wanted to do the time speedy upy thing which i am not sure is possible to be honest
+    private void FixedUpdate()
     {
         if (hascrashed)
             return;
@@ -24,16 +26,24 @@ public class AIAgent : MonoBehaviour
         var rightRay = Physics.Raycast(transform.position, transform.right, out var hitRight, Mathf.Infinity, layersToCrashInto);
         var forwardRay = Physics.Raycast(transform.position, transform.forward, out var hitForward, Mathf.Infinity, layersToCrashInto);
 
+
+        if (checkpointsPassedThrough + 1 < checkpoints.Count)
+        {
+            distanceToNextCheckpoint = (transform.position - checkpoints[checkpointsPassedThrough + 1].transform.position).magnitude;
+        }
+
         var input = new float[]
-        { hitLeft.distance, hitRight.distance, hitForward.distance, (transform.position - checkpoints[checkpointsPassedThrough + 1].transform.position).magnitude };
-        //Debug.Log(brain.Process(input));
+        { hitLeft.distance, hitRight.distance, hitForward.distance, distanceToNextCheckpoint };
+
         var aiOutput = brain.Process(input);
 
         var forwardBackwards = aiOutput[0];
         var leftRight = aiOutput[1];
 
-        gameObject.GetComponent<AICar>().AICarInput(leftRight, forwardBackwards);
+        gameObject.GetComponent<AICar>().AICarInput(leftRight, forwardBackwards);//can make this more efficient by geting the componenet at the start then using that here
     }
+
+
     internal void CheckpointChecker(GameObject checkpoint)
     {
         for (int i = 0; i < checkpoints.Count; i++)

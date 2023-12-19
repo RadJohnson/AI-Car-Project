@@ -2140,6 +2140,7 @@ MonoBehaviour:
     type: 3}
   startPoint: {fileID: 1133628766}
   timeBetweenGenerations: 15
+  maxTimeBetweenGenerations: 200
   checkpoints:
   - {fileID: 475458146}
   - {fileID: 1091628018}
@@ -2182,7 +2183,7 @@ MonoBehaviour:
   - {fileID: 478703913}
   - {fileID: 751663763}
   - {fileID: 1032363157}
-  brainFilePath: 
+  savedGenerationFilePath: 
 --- !u!4 &1133628766
 Transform:
   m_ObjectHideFlags: 0
