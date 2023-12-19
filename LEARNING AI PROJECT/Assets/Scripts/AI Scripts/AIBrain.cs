@@ -35,52 +35,13 @@ using Random = UnityEngine.Random;
             // Use the copy constructor to make a deep copy of each layer.
             network[i] = new Layer(copyNetwork.network[i]);
 
-            // Re-establish the links to the previous layers within the new network.
-            // Note that previousLayer should not be deep copied; it should reference the previous layer in the new network.
+           
             if (i != 0)
                 network[i].previousLayer = network[i - 1];
         }
 
-
-        /*
-        for (int i = 0; i < network.Length; i++)
-        {
-            for (int j = 0; j < network[i].nodes.Length; j++)
-            {
-                if (i + 1 > network.Length - 1)
-                {
-                    break;
-                }
-                network[i].nodes[j].weights = new float[network[i + 1].nodes.Length];//index was outside the bounds of the array
-
-                float variance = Mathf.Sqrt(1.0f / network[i + 1].nodes.Length);
-                for (int k = 0; k < network[i + 1].nodes.Length; k++)
-                {
-                    network[i].nodes[j].weights[k] = (Random.Range(0f, 1f) * 2 * variance - variance);
-                }
-
-            }
-        }
-        */
-        //InitialiseWeights();
-
-        //CopyWeights(copyNetwork);
     }
 
-    //This will likely need to change for loading in saved ai
-    private void CopyWeights(AIBrain BrainToCoppy)
-    {
-        for (int i = 0; i < network.Length; i++)
-        {
-            for (int j = 0; j < network[i].nodes.Length; j++)
-            {
-                for (int k = 0; k < network[i].nodes[j].weights.Length; k++)
-                {
-                    network[i].nodes[j].weights[k] = BrainToCoppy.network[i].nodes[j].weights[k];
-                }
-            }
-        }
-    }
 
     public void AddFitness(float fit)
     {

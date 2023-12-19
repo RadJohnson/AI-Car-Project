@@ -9,47 +9,56 @@ public class AISpectatorCamera : MonoBehaviour
     [SerializeField] internal float smoothSpeed;
     [SerializeField] internal float radius;
     private int currentCarIndex = 0;
+    private Vector3 currentRotation;
+
+    void Start()
+    {
+        currentRotation = transform.eulerAngles;
+    }
 
     void Update()
     {
-        cars = aiManager.GetCarGameObjects();//this could be made more efficient by listening to an event
+        cars = aiManager.GetCarGameObjects(); // consider optimizing this
 
         // Switch car
         if (Input.GetMouseButtonDown(0))
         {
-            currentCarIndex++;
+            currentCarIndex = (currentCarIndex + 1) % cars.Count;
         }
         else if (Input.GetMouseButtonDown(1))
         {
             currentCarIndex--;
+            if (currentCarIndex < 0)
+            {
+                currentCarIndex = cars.Count - 1;
+            }
         }
-        if (currentCarIndex < 0)
-        {
-            currentCarIndex = cars.Count - 1;
-        }
-        else if (currentCarIndex > cars.Count - 1)
-        {
-            currentCarIndex = 0;
-        }
-        Debug.Log(currentCarIndex);
+        //Debug.Log(currentCarIndex);
 
+        // Adjust zoom with scroll wheel
         radius -= Input.mouseScrollDelta.y;
         radius = Mathf.Clamp(radius, 2, 8);
 
-        Vector3 targetPosition = cars[currentCarIndex].transform.position;
-        Vector3 direction = (transform.position - targetPosition).normalized;
-        Vector3 desiredPosition = targetPosition + direction * radius;
+        // Rotate camera with mouse movement
+        if (Input.GetMouseButton(2)) // Middle mouse button
+        {
+            currentRotation.y += Input.GetAxis("Mouse X");
+            currentRotation.x -= Input.GetAxis("Mouse Y");
+        }
 
-        Vector3 smoothedPosition = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed);
-        transform.position = smoothedPosition;
+        // Calculate new position and rotation
+        Quaternion rotation = Quaternion.Euler(currentRotation.x, currentRotation.y, 0);
+        Vector3 direction = rotation * -Vector3.forward;
+        Vector3 desiredPosition = cars[currentCarIndex].transform.position + direction * radius;
 
+        // Apply smooth transition
+        transform.position = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed);
         transform.LookAt(cars[currentCarIndex].transform);
     }
 
-
     private void Reset()
     {
-        aiManager = GameObject.FindObjectOfType<AIManager>();
+        aiManager = FindObjectOfType<AIManager>();
         smoothSpeed = 0.25f;
         radius = 5f;
     }

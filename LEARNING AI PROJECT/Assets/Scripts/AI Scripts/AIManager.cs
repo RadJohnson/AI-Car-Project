@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Unity.VisualScripting;
+using UnityEditor.SearchService;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class AIManager : MonoBehaviour
 {
@@ -15,24 +17,18 @@ public class AIManager : MonoBehaviour
 
     //first 3 inputs are for the distance from walls and 4th is for distance to next checkpoint
     private int[] networkShape = { 4, 10, 10, 2 };// Make sure that the first and last numbers in the shape are the same as the number of inputs that outputs you want
-
     private List<AIBrain> nets;
     internal List<AIAgent> agentList;
 
     [SerializeField] private List<GameObject> checkpoints;
-
     [SerializeField] private string brainFilePath;
-
-
-    // clean up code in here by moving to own functions
 
     private void Update()
     {
-        if (isTraining == false)
+        if (!isTraining)
         {
             Debug.Log($"Starting Generation {generationNumber}");
-
-            if (generationNumber % 20 == 0)//increases the time by 5 seconds (at the moment) every 20 generations
+            if (generationNumber % 20 == 0)
                 timeBetweenGenerations += 5f;
 
             if (generationNumber == 0)
@@ -41,42 +37,18 @@ public class AIManager : MonoBehaviour
             }
             else
             {
-                //This may need to change so that the AI get given more score based on number of checkpoints passed through
-                for (int i = 0; i < populationSize; i++)
-                {
-                    if (!agentList[i].hascrashed)
-                        nets[i].AddFitness((float)(agentList[i].checkpointsPassedThrough + (float)CumulativeCheckpointDistance(agentList[i].checkpointsPassedThrough)));
-                    else
-                        nets[i].SetFitness(nets[i].GetFitness() - 10);
+                CalcualteFitness();
 
-                }
-
-                nets.Sort();//puts the fitest at the bottom of this which is why next 2 for loops are the way they are
+                nets.Sort();
                 nets.Reverse();
 
+                SaveNetworks(nets, generationNumber, populationSize, true);
 
-                for (int i = 0; i < populationSize; i++)//may want to only save the first few networks rather than all of them
+                MutateGeneration();
+
+                foreach (var net in nets)
                 {
-                    var contentToSave = JsonUtility.ToJson(nets[i], true);
-                    string filePath = Path.Combine(Application.persistentDataPath, $"Generation_{generationNumber} NeuralNetwork_{/*agentNum*/i}.json");//want to now change the numbers in the file name so it is more logical when lookign at the save files
-                    //change application.persistant datapath to a coppied file path since it is currently saving to appdata\locallow\(unity project counter)
-                    //Debug.Log(filePath);
-
-                    File.WriteAllText(filePath, contentToSave);
-                }
-
-                for (int i = 0; i < populationSize / 2; i++)
-                {
-                    // THERE HAS TO BE AN ISSUE WITH HOWI AM COPPYING OR EDITING AGENTS AS I AM NOT MAKING A NEW VERSION OF ONE HALF OF THE NETWORKS
-                    nets[i + populationSize / 2] = new AIBrain(nets[i]);
-                    nets[i] = new AIBrain(nets[i]);
-                    nets[i].MutateWeights();
-                }
-
-
-                for (int i = 0; i < populationSize; i++)
-                {
-                    nets[i].SetFitness(0f);
+                    net.SetFitness(0f);
                 }
             }
             generationNumber++;
@@ -86,14 +58,34 @@ public class AIManager : MonoBehaviour
         }
     }
 
+    private void CalcualteFitness()
+    {
+        for (int i = 0; i < populationSize; i++)
+        {
+            if (!agentList[i].hascrashed)
+                nets[i].AddFitness((float)(agentList[i].checkpointsPassedThrough + (float)CumulativeCheckpointDistance(agentList[i].checkpointsPassedThrough)));
+            else
+                nets[i].SetFitness(nets[i].GetFitness() - 10);
+        }
+    }
+
+    private void MutateGeneration()
+    {
+        for (int i = 0; i < populationSize / 2; i++)
+        {
+            nets[i + populationSize / 2] = new AIBrain(nets[i]);
+            nets[i] = new AIBrain(nets[i]);
+            nets[i].MutateWeights();
+        }
+    }
 
     private void SpawnAgents()
     {
         if (agentList != null)
         {
-            for (int i = 0; i < agentList.Count; i++)
+            foreach (var agent in agentList)
             {
-                Destroy(agentList[i].gameObject);
+                Destroy(agent.gameObject);
             }
         }
         agentList = new List<AIAgent>();
@@ -109,17 +101,10 @@ public class AIManager : MonoBehaviour
 
     private void CreateTrainingPool()
     {
-        //population must be even and will be set to 50 as a minimum
-        if (populationSize % 2 != 0)
-        {
-            if (populationSize < 50)
-                populationSize = 50;
-            else
-                populationSize++;
-        }
-
+        AdjustPopulationSize(out populationSize);
         nets = new List<AIBrain>();
-        if (brainFilePath == "")
+
+        if (string.IsNullOrEmpty(brainFilePath))
         {
             for (int i = 0; i < populationSize; i++)
             {
@@ -129,27 +114,33 @@ public class AIManager : MonoBehaviour
         }
         else
         {
-            //modify so it loads all of a generation back in
-            string brain = File.ReadAllText(brainFilePath);
+            nets = LoadNetworks(brainFilePath, populationSize, true);
+            generationNumber = nets.Count > 0 ? nets[0].generation : 0;
+        }
+    }
 
-            generationNumber = JsonUtility.FromJson<AIBrain>(brain).generation;
-
-            for (int i = 0; i < populationSize; i++)
-            {
-                AIBrain net = new AIBrain(JsonUtility.FromJson<AIBrain>(brain));// this might not be working correctly
-                nets.Add(net);
-            }
+    private void AdjustPopulationSize(out int _populationSize)
+    {
+        _populationSize = 0;
+        //population must be even and will be set to 50 as a minimum
+        if (_populationSize < 50)
+        {
+            _populationSize = 50;
+        }
+        else if (_populationSize % 2 != 0)
+        {
+            _populationSize++;
         }
     }
 
     private float CumulativeCheckpointDistance(int checkPointsPassedThrough)
     {
-        float returnVal = 0;
+        float distance = 0;
         for (int i = 1; i < checkPointsPassedThrough; i++)
         {
-            returnVal += (checkpoints[i - 1].transform.position - checkpoints[i].transform.position).magnitude;
+            distance += (checkpoints[i - 1].transform.position - checkpoints[i].transform.position).magnitude;
         }
-        return returnVal;
+        return distance;
     }
 
     private void Timer()
@@ -157,10 +148,52 @@ public class AIManager : MonoBehaviour
         isTraining = false;
     }
 
-    // doesnt work
     internal List<GameObject> GetCarGameObjects()
     {
         return agentList.Select(agent => agent.gameObject).ToList();
     }
 
+    void SaveNetworks(List<AIBrain> _nets, int _generationNumber, int _saveCount, bool _saveInFolder)
+    {
+        string baseFilePath = Path.Combine(Application.persistentDataPath, SceneManager.GetActiveScene().name);
+        if (_saveInFolder)
+        {
+            baseFilePath = Path.Combine(baseFilePath, $"Generation_{_generationNumber}");
+            Directory.CreateDirectory(baseFilePath);
+        }
+
+        for (int i = 0; i < _saveCount; i++)
+        {
+            var contentToSave = JsonUtility.ToJson(_nets[i], true);
+            string filePath = Path.Combine(baseFilePath, $"NeuralNetwork_{i}.json");
+            File.WriteAllText(filePath, contentToSave);
+        }
+    }
+
+    List<AIBrain> LoadNetworks(string _path, int _populationSize, bool _loadAllFromFolder)
+    {
+        List<AIBrain> _nets = new List<AIBrain>();
+
+        if (_loadAllFromFolder)
+        {
+            string[] fileEntries = Directory.GetFiles(_path, "*.json");
+            foreach (string fileName in fileEntries)
+            {
+                string brain = File.ReadAllText(fileName);
+                AIBrain net = JsonUtility.FromJson<AIBrain>(brain);
+                _nets.Add(net);
+            }
+        }
+        else
+        {
+            string brain = File.ReadAllText(_path);
+            AIBrain singleNet = JsonUtility.FromJson<AIBrain>(brain);
+            for (int i = 0; i < _populationSize; i++)
+            {
+                _nets.Add(new AIBrain(singleNet));
+            }
+        }
+
+        return _nets;
+    }
 }
