@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Unity.VisualScripting;
-using UnityEditor.SearchService;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,12 +11,12 @@ public class AIManager : MonoBehaviour
     [SerializeField, Tooltip("Time in Seconds")] private float timeBetweenGenerations;
     [SerializeField, Tooltip("Time in Seconds")] private float maxTimeBetweenGenerations;
     private bool isTraining = false;
-    private int populationSize = 50;
+    [SerializeField] private int populationSize = 50;
     private int generationNumber = 0;
 
     //first 3 inputs are for the distance from walls and 4th is for distance to next checkpoint
     private int[] networkShape = { 4, 10, 10, 2 };// Make sure that the first and last numbers in the shape are the same as the number of inputs that outputs you want
-    private List<AIBrain> nets;
+    [SerializeField] private List<AIBrain> nets;
     internal List<AIAgent> agentList;
 
     [SerializeField] private List<GameObject> checkpoints;
@@ -28,12 +26,12 @@ public class AIManager : MonoBehaviour
     {
         if (!isTraining)
         {
-            Debug.Log($"Starting Generation {generationNumber}");
+            //Debug.Log($"Starting Generation {generationNumber}");
             if (generationNumber % 50 == 0)
             {
                 if (timeBetweenGenerations < maxTimeBetweenGenerations)
                 {
-                    timeBetweenGenerations = Mathf.Min(timeBetweenGenerations + 5f, maxTimeBetweenGenerations);
+                    timeBetweenGenerations = Mathf.Min(timeBetweenGenerations + 10f, maxTimeBetweenGenerations);
                 }
             }
 
@@ -61,6 +59,7 @@ public class AIManager : MonoBehaviour
             isTraining = true;
             Invoke("Timer", timeBetweenGenerations);
             SpawnAgents();
+            Debug.Log($"Starting Generation {generationNumber}");
         }
     }
 
@@ -194,7 +193,9 @@ public class AIManager : MonoBehaviour
             {
                 string brain = File.ReadAllText(fileName);
                 AIBrain net = JsonUtility.FromJson<AIBrain>(brain);
-                _nets.Add(net);
+                AIBrain newNet = new AIBrain(net); // Create a copy of the net
+                newNet.generation = net.generation; // Explicitly set the generation
+                _nets.Add(newNet);
             }
         }
         else
@@ -203,10 +204,11 @@ public class AIManager : MonoBehaviour
             AIBrain singleNet = JsonUtility.FromJson<AIBrain>(brain);
             for (int i = 0; i < _populationSize; i++)
             {
-                _nets.Add(new AIBrain(singleNet));
+                AIBrain newNet = new AIBrain(singleNet); // Create a copy of the singleNet
+                newNet.generation = singleNet.generation; // Explicitly set the generation
+                _nets.Add(newNet);
             }
         }
-
         return _nets;
     }
 }

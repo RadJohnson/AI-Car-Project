@@ -9,7 +9,7 @@ using Random = UnityEngine.Random;
 
     private float fitness;
 
-    [SerializeField]internal int generation;
+    [SerializeField] internal int generation;
 
     public AIBrain(int[] networkShape)
     {
@@ -28,7 +28,6 @@ using Random = UnityEngine.Random;
     {
         // Initialize the network array with the same length as the copyNetwork's network array.
         network = new Layer[copyNetwork.network.Length];
-
         // Copy each layer using the Layer copy constructor.
         for (int i = 0; i < copyNetwork.network.Length; i++)
         {
@@ -41,7 +40,6 @@ using Random = UnityEngine.Random;
         }
 
     }
-
 
     public void AddFitness(float fit)
     {
@@ -153,6 +151,8 @@ using Random = UnityEngine.Random;
         return tmp;
     }
 }
+
+
 [Serializable] class Node
 {//inputs for this are prevous layers outputs
 
