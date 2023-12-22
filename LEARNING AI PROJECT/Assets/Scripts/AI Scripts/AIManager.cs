@@ -11,7 +11,7 @@ public class AIManager : MonoBehaviour
     [SerializeField, Tooltip("Time in Seconds")] private float timeBetweenGenerations;
     [SerializeField, Tooltip("Time in Seconds")] private float maxTimeBetweenGenerations;
     private bool isTraining = false;
-    [SerializeField] private int populationSize = 50;
+    [SerializeField] private int populationSize;
     private int generationNumber = 0;
 
     //first 3 inputs are for the distance from walls and 4th is for distance to next checkpoint
@@ -106,7 +106,7 @@ public class AIManager : MonoBehaviour
 
     private void CreateTrainingPool()
     {
-        AdjustPopulationSize(out populationSize);
+        AdjustPopulationSize(ref populationSize);
         nets = new List<AIBrain>();
 
         if (string.IsNullOrEmpty(savedGenerationFilePath))
@@ -124,9 +124,8 @@ public class AIManager : MonoBehaviour
         }
     }
 
-    private void AdjustPopulationSize(out int _populationSize)
+    private void AdjustPopulationSize(ref int _populationSize)
     {
-        _populationSize = 0;
         //population must be even and will be set to 50 as a minimum
         if (_populationSize < 50)
         {

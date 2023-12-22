@@ -2139,9 +2139,9 @@ MonoBehaviour:
   agentPrefab: {fileID: 6114185742770414947, guid: 0fefcbf813bb91545bf23c51c2f59a4d,
     type: 3}
   startPoint: {fileID: 1133628766}
-  timeBetweenGenerations: 105
+  timeBetweenGenerations: 10
   maxTimeBetweenGenerations: 200
-  populationSize: 50
+  populationSize: 200
   nets: []
   checkpoints:
   - {fileID: 475458146}
@@ -2195,7 +2195,7 @@ Transform:
   m_GameObject: {fileID: 1133628764}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -50, y: 0.86, z: 177.4}
+  m_LocalPosition: {x: -50, y: 1.202, z: 177.4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

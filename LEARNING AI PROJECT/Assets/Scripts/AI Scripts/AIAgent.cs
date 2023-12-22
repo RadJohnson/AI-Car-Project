@@ -20,7 +20,10 @@ public class AIAgent : MonoBehaviour
     private void FixedUpdate()
     {
         if (hascrashed)
+        {
+            gameObject.GetComponent<Rigidbody>().velocity = Vector3.zero;
             return;
+        }
 
         var leftRay = Physics.Raycast(transform.position, -transform.right, out var hitLeft, Mathf.Infinity, layersToCrashInto);
         var rightRay = Physics.Raycast(transform.position, transform.right, out var hitRight, Mathf.Infinity, layersToCrashInto);
