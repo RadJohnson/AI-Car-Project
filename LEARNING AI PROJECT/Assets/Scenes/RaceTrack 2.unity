@@ -2139,7 +2139,7 @@ MonoBehaviour:
   agentPrefab: {fileID: 6114185742770414947, guid: 0fefcbf813bb91545bf23c51c2f59a4d,
     type: 3}
   startPoint: {fileID: 1133628766}
-  timeBetweenGenerations: 10
+  timeBetweenGenerations: 60
   maxTimeBetweenGenerations: 200
   populationSize: 200
   nets: []

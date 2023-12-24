@@ -7,20 +7,30 @@ using UnityEngine.SceneManagement;
 public class AIManager : MonoBehaviour
 {
     [SerializeField] internal AIAgent agentPrefab;
-    [SerializeField] private Transform startPoint;
+
+    [Space(5), Header("Objects in Scene needed for training")]
+    [SerializeField, Tooltip("Needs to be set manualy")] private Transform startPoint;
+    [SerializeField, Tooltip("Needs to be set manualy")] private List<GameObject> checkpoints;
+    
+    [Space(10),Header("Training time Time Settings")]
     [SerializeField, Tooltip("Time in Seconds")] private float timeBetweenGenerations;
     [SerializeField, Tooltip("Time in Seconds")] private float maxTimeBetweenGenerations;
-    private bool isTraining = false;
-    [SerializeField] private int populationSize;
+    
+    [Space(10)]
+    [SerializeField, Range(50, 1000), Tooltip("Use this to control the number of agents trained per generation")] private int populationSize;
     private int generationNumber = 0;
+    private bool isTraining = false;
 
     //first 3 inputs are for the distance from walls and 4th is for distance to next checkpoint
-    private int[] networkShape = { 4, 10, 10, 2 };// Make sure that the first and last numbers in the shape are the same as the number of inputs that outputs you want
-    [SerializeField] private List<AIBrain> nets;
+    [Header("Network shape needs to be at least 3 long layers with the first and last being input and output \nlayer give number of nodes for each layer in each index of the array")]
+    [SerializeField] private int[] networkShape = { 4, 10, 10, 2 };// Make sure that the first and last numbers in the shape are the same as the number of inputs that outputs you want
+    /*[SerializeField]*/ private List<AIBrain> nets;
     internal List<AIAgent> agentList;
 
-    [SerializeField] private List<GameObject> checkpoints;
+    
+    [Space(10),Header("Save Settings")]
     [SerializeField] private string savedGenerationFilePath;
+    [SerializeField] private bool saveNetworks;
 
     private void Update()
     {
@@ -46,7 +56,8 @@ public class AIManager : MonoBehaviour
                 nets.Sort();
                 nets.Reverse();
 
-                SaveNetworks(nets, generationNumber, populationSize, true);
+                if (saveNetworks)
+                    SaveNetworks(nets, generationNumber, populationSize, true);
 
                 MutateGeneration();
 
