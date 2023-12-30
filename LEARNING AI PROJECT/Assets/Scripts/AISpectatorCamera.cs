@@ -19,20 +19,20 @@ public class AISpectatorCamera : MonoBehaviour
 
     private void Update()
     {
-        cars = aiManager.GetCarGameObjects(); // consider optimizing this
+        cars = aiManager.GetCarGameObjects(); // consider optimizing this so that it only gets called on reset could be done by moveing this to the manager or by having it as an event
 
         // Switch car
         if (Input.GetMouseButtonDown(0))
         {
-            currentCarIndex = (currentCarIndex + 1) % cars.Count;
+            currentCarIndex++;
+            if (currentCarIndex > cars.Count)
+                currentCarIndex = 0;
         }
         else if (Input.GetMouseButtonDown(1))
         {
             currentCarIndex--;
             if (currentCarIndex < 0)
-            {
                 currentCarIndex = cars.Count - 1;
-            }
         }
         //Debug.Log(currentCarIndex);
 
@@ -44,7 +44,7 @@ public class AISpectatorCamera : MonoBehaviour
             currentRotation.y += Input.GetAxis("Mouse X") * mouseSensitivity.x;
             currentRotation.x -= Input.GetAxis("Mouse Y") * mouseSensitivity.y;
         }
-        
+
     }
 
     private void FixedUpdate()

@@ -63,7 +63,7 @@ public class AIAgent : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        if ((layersToCrashInto & (1 << collision.collider.gameObject.layer)) != 0)
+        if (layersToCrashInto == collision.gameObject.layer)
         {
             hascrashed = true;
         }
