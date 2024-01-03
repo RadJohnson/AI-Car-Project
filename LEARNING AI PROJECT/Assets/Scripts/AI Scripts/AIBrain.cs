@@ -2,10 +2,10 @@ using System;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-// to use as a guide https://github.com/john-sorrentino/Neural-Network-Evolution-Sim-Tutorial/blob/main/NN.cs https://www.youtube.com/watch?v=yyS5hjyOFDo&list=PLlIPoiD-ZBaw9x3NRoquGkFBl9RpAasys&index=2&ab_channel=JohnSorrentino
-[Serializable] public class AIBrain : IComparable<AIBrain>
+[Serializable]
+public class AIBrain : IComparable<AIBrain>
 {
-    [SerializeField]internal Layer[] network;
+    [SerializeField] internal Layer[] network;
 
     private float fitness;
 
@@ -20,7 +20,7 @@ using Random = UnityEngine.Random;
             if (i != 0)
                 network[i].previousLayer = network[i - 1];
         }
-        
+
         InitialiseWeights();
     }
 
@@ -34,7 +34,7 @@ using Random = UnityEngine.Random;
             // Use the copy constructor to make a deep copy of each layer.
             network[i] = new Layer(copyNetwork.network[i]);
 
-           
+
             if (i != 0)
                 network[i].previousLayer = network[i - 1];
         }
@@ -153,25 +153,21 @@ using Random = UnityEngine.Random;
 }
 
 
-[Serializable] class Node
+[Serializable]
+class Node
 {//inputs for this are prevous layers outputs
 
-    [SerializeField]internal float[] weights;
-    //private float bias = 0;
+    [SerializeField] internal float[] weights;
 
-    // used to setup weights and bias for the node using using Xavier/Glorot
     public Node(int nextLayersNodeCount)
     {
         weights = new float[nextLayersNodeCount];
-        //float variance = Mathf.Sqrt(1.0f / nextLayersNodeCount);
 
         for (int i = 0; i < nextLayersNodeCount; i++)
         {
             weights[i] = Random.Range(-0.5f, 0.5f);
-            //weights[i] = (Random.Range(0f, 1f) * 2 * variance - variance);
         }
 
-        //bias = (Random.Range(0f, 1f) * 2 * variance - variance);
     }
 
     // Copy constructor for node
@@ -189,7 +185,8 @@ using Random = UnityEngine.Random;
 }
 
 
-[Serializable] public class Layer
+[Serializable]
+public class Layer
 {
     [SerializeField] internal Node[] nodes;
     internal Layer previousLayer;
@@ -260,7 +257,6 @@ struct ActivationFunction
     internal static float Tanh(float x)
     {
         return (float)Math.Tanh(x);
-
     }
 
     internal static float Relu(float x)
