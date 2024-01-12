@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,6 +7,8 @@ using UnityEngine.SceneManagement;
 
 public class AIManager : MonoBehaviour
 {
+    internal event Action carListUpdate;
+
     [SerializeField] internal AIAgent agentPrefab;
 
     [Space(5), Header("Objects in Scene needed for training")]
@@ -14,12 +17,12 @@ public class AIManager : MonoBehaviour
 
     [Space(10), Header("Training time Time Settings")]
     [SerializeField, Tooltip("Time in Seconds")] private float timeBetweenGenerations;
-    [SerializeField, Tooltip("Time in Seconds")] private float maxTimeBetweenGenerations;
+    [SerializeField, Tooltip("Time in Seconds")] internal float maxTimeBetweenGenerations;
 
     [Space(10)]
-    [SerializeField, Range(50, 1000), Tooltip("Use this to control the number of agents trained per generation")] private int populationSize;
+    [SerializeField, Range(50, 1000), Tooltip("Use this to control the number of agents trained per generation")] internal int populationSize;
     private int generationNumber = 0;
-    private bool isTraining = false;
+    [SerializeField] internal bool isTraining = true;//normaly set to false to imediately start training from modifying fields in inspector
 
     //first 3 inputs are for the distance from walls and 4th is for distance to next checkpoint
     [Header("Network shape needs to be at least 3 long layers with the first and last being input and output \nlayer give number of nodes for each layer in each index of the array"), Space(10)]
@@ -30,15 +33,15 @@ public class AIManager : MonoBehaviour
 
 
     [Space(10), Header("Save Settings")]
-    [SerializeField] private string savedGenerationFilePath;
-    [SerializeField] private bool saveNetworks;
+    [SerializeField] internal string savedGenerationFilePath;
+    [SerializeField] internal bool saveNetworks;
 
     private void Update()
     {
         if (!isTraining)
         {
             //Debug.Log($"Starting Generation {generationNumber}");
-            if (generationNumber % 50 == 0)
+            if (generationNumber % 50 == 0 && generationNumber != 0)
             {
                 if (timeBetweenGenerations < maxTimeBetweenGenerations)
                 {
@@ -63,56 +66,14 @@ public class AIManager : MonoBehaviour
                 MutateGeneration();
 
                 foreach (var net in nets)
-                {
                     net.SetFitness(0f);
-                }
+
             }
             generationNumber++;
             isTraining = true;
             Invoke("Timer", timeBetweenGenerations);
             SpawnAgents();
             Debug.Log($"Starting Generation {generationNumber}");
-        }
-    }
-
-    private void CalcualteFitness()
-    {
-        for (int i = 0; i < populationSize; i++)
-        {
-            if (!agentList[i].hascrashed)
-                nets[i].AddFitness((float)(agentList[i].checkpointsPassedThrough + CumulativeCheckpointDistance(agentList[i].checkpointsPassedThrough)));
-            else
-                nets[i].SetFitness(nets[i].GetFitness() - 10);
-        }
-    }
-
-    private void MutateGeneration()
-    {
-        for (int i = 0; i < populationSize / 2; i++)
-        {
-            nets[i + populationSize / 2] = new AIBrain(nets[i]);
-            nets[i] = new AIBrain(nets[i]);
-            nets[i].MutateWeights();
-        }
-    }
-
-    private void SpawnAgents()
-    {
-        if (agentList != null)
-        {
-            foreach (var agent in agentList)
-            {
-                Destroy(agent.gameObject);
-            }
-        }
-        agentList = new List<AIAgent>();
-
-        for (int i = 0; i < populationSize; i++)
-        {
-            AIAgent agent = Instantiate(agentPrefab, startPoint.position, transform.rotation);
-            agent.checkpoints = checkpoints;
-            agent.Initialize(nets[i], generationNumber);
-            agentList.Add(agent);
         }
     }
 
@@ -149,6 +110,17 @@ public class AIManager : MonoBehaviour
         }
     }
 
+    private void CalcualteFitness()
+    {
+        for (int i = 0; i < populationSize; i++)
+        {
+            if (!agentList[i].hascrashed)
+                nets[i].AddFitness((float)(agentList[i].checkpointsPassedThrough + CumulativeCheckpointDistance(agentList[i].checkpointsPassedThrough)));
+            else
+                nets[i].SetFitness(nets[i].GetFitness() - 10);
+        }
+    }
+
     private float CumulativeCheckpointDistance(int checkPointsPassedThrough)
     {
         float distance = 0;
@@ -166,14 +138,36 @@ public class AIManager : MonoBehaviour
         return distance;
     }
 
-    private void Timer()
+    private void MutateGeneration()
     {
-        isTraining = false;
+        for (int i = 0; i < populationSize / 2; i++)
+        {
+            nets[i + populationSize / 2] = new AIBrain(nets[i]);
+            nets[i] = new AIBrain(nets[i]);
+            nets[i].MutateWeights();
+        }
     }
 
-    internal List<GameObject> GetCarGameObjects()
+    private void SpawnAgents()
     {
-        return agentList.Select(agent => agent.gameObject).ToList();
+        if (agentList != null)
+        {
+            foreach (var agent in agentList)
+            {
+                Destroy(agent.gameObject);
+            }
+        }
+        agentList = new List<AIAgent>();
+
+        for (int i = 0; i < populationSize; i++)
+        {
+            AIAgent agent = Instantiate(agentPrefab, startPoint.position, transform.rotation);
+            agent.checkpoints = checkpoints;
+            agent.Initialize(nets[i], generationNumber);
+            agentList.Add(agent);
+        }
+
+        carListUpdate?.Invoke();//instead of if statement null check
     }
 
     void SaveNetworks(List<AIBrain> _nets, int _generationNumber, int _saveCount, bool _saveInFolder)
@@ -221,5 +215,15 @@ public class AIManager : MonoBehaviour
             }
         }
         return _nets;
+    }
+
+    internal List<GameObject> GetCarGameObjects()
+    {
+        return agentList.Select(agent => agent.gameObject).ToList();
+    }
+
+    private void Timer()
+    {
+        isTraining = false;
     }
 }

@@ -1149,8 +1149,8 @@ MonoBehaviour:
   - {fileID: 605934261}
   - {fileID: 1812675475}
   - {fileID: 1241783978}
-  timeBetweenGenerations: 15
-  maxTimeBetweenGenerations: 0
+  timeBetweenGenerations: 10
+  maxTimeBetweenGenerations: 200
   populationSize: 0
   networkShape: 040000000a0000000a00000002000000
   savedGenerationFilePath: 
