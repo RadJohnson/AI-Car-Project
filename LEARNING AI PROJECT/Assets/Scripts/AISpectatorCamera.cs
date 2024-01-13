@@ -32,7 +32,6 @@ public class AISpectatorCamera : MonoBehaviour
             currentRotation.y += Input.GetAxis("Mouse X") * mouseSensitivity.x;
             currentRotation.x -= Input.GetAxis("Mouse Y") * mouseSensitivity.y;
         }
-
     }
 
     private void FixedUpdate()
